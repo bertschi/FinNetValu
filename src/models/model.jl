@@ -20,6 +20,7 @@ function valuation! end
 
 Same as `valuation!`, but non destructive.
 """
+function valuation end
 # Note: needs separate implementation for autodiff
 # function valuation(net::FinancialModel, x, a)
 #     y = similar(x)

@@ -91,17 +91,17 @@ git-tree-sha1 = "c24e9b6500c037673f0241a2783472b8c3d080c7"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
 version = "0.16.4"
 
-[[FieldMetadata]]
-deps = ["REPL"]
-git-tree-sha1 = "367d77381908451a77266d6eafb36fb378b9febc"
-uuid = "bf96fef3-21d2-5d20-8afa-0e7d4c32a885"
-version = "0.0.1"
+[[DocStringExtensions]]
+deps = ["LibGit2", "Markdown", "Pkg", "Test"]
+git-tree-sha1 = "a016e0bfe98a748c4488e2248c2ef4c67d6fdd35"
+uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+version = "0.5.0"
 
-[[Flatten]]
-deps = ["FieldMetadata", "Pkg", "Test"]
-git-tree-sha1 = "1686f8f1655d4cf97d21447ec2a90c1ec3e0b96a"
-uuid = "4c728ea3-d9ee-5c9a-9642-b6f7d7dc04fa"
-version = "0.0.2"
+[[Documenter]]
+deps = ["Compat", "DocStringExtensions", "Logging", "REPL"]
+git-tree-sha1 = "d7b6266f1f87a8c85ce4c1f9c0e9ba3b7831ce1d"
+uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+version = "0.19.7"
 
 [[ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "InteractiveUtils", "LinearAlgebra", "NaNMath", "Pkg", "Random", "SparseArrays", "SpecialFunctions", "StaticArrays", "Test"]
