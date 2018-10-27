@@ -1,11 +1,4 @@
 """
-    rowsums(A)
-
-Compute row sums of matrix `A`.
-"""
-rowsums(A) = vec(sum(A; dims = 2))
-
-"""
     constantly(val)
 
 Create constant function that returns `val` when called.
@@ -23,11 +16,23 @@ function fillrows(v::AbstractVector)
 end
 
 """
-    isleft_substochastic(A)
+    calm(f, n)
 
-Check if matrix `A` is left-substochastic.
+Create a new function that behaves like `f()` but returns the same
+value for `n` successive calls, i.e. `f` is invoked once for every `n`
+calls of `calm(f, n)`.  
 """
-function isleft_substochastic(A::AbstractMatrix)
-    all(zero(eltype(A)) .<= sum(A; dims = 1) .<= one(eltype(A)))
+function calm(f, n)
+    i = 1
+    val = f()
+    function calmed()
+        if i == n
+            i = 1
+            val = f()
+        else
+            i += 1
+        end
+        val
+    end
+    calmed
 end
-    

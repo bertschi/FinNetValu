@@ -1,6 +1,7 @@
 module FinNetValu
 
 include("utils/utils.jl")
+include("utils/nets.jl")
 include("models/model.jl")
 include("models/neva.jl")
 include("models/xos.jl")
@@ -18,5 +19,10 @@ export bookequity, equity, debt
 export BlackScholesParams, Aτ, discount
 # Monte-Carlo helpers
 export MonteCarloSampler, sample, expectation
+
+# Functional utils
+export constantly, calm
+# Network utils
+export erdosrenyi, rescale
 
 end # module
