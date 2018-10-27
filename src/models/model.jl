@@ -1,4 +1,6 @@
 using NLsolve
+using ForwardDiff
+using LinearAlgebra
 
 """
 Base type of all financial network models.
@@ -18,11 +20,12 @@ function valuation! end
 
 Same as `valuation!`, but non destructive.
 """
-function valuation(net::FinancialModel, x, a)
-    y = similar(x)
-    valuation!(y, net, x, a)
-    y
-end
+# Note: needs separate implementation for autodiff
+# function valuation(net::FinancialModel, x, a)
+#     y = similar(x)
+#     valuation!(y, net, x, a)
+#     y
+# end
 
 """
     init(net, a)
@@ -47,16 +50,30 @@ function valuefunc(net::FinancialModel, a)
 end
 
 """
-    value(net, a; kwargs...)
+    fixvalue(net, a; kwargs...)
 
 Solve for self-consistent fixed point value of model `net` for
 external asset values `a`. `kwargs` are passed on to solver.
 """
-function value(net::FinancialModel, a; kwargs...)
+function fixvalue(net::FinancialModel, a; kwargs...)
     sol = fixedpoint(valuefunc(net, a),
                      init(net, a);
                      kwargs...)
     sol.zero
+end
+
+"""
+    fixjacobian(net, a [, x])
+
+Compute the Jacobian matrix of `fixvalue(net, a)` using the implicit
+function theorem and autodiff (currently via ForwardDiff). Note
+that `x` is assumed to solve the fixed point `x = valuation(net,
+x, a)` which is also its default value.
+"""
+function fixjacobian(net::FinancialModel, a, x = fixvalue(net, a))
+    dVdx = ForwardDiff.jacobian(x -> valuation(net, x, a), x)
+    dVda = ForwardDiff.jacobian(a -> valuation(net, x, a), a)
+    (I - dVdx) \ dVda
 end
 
 """

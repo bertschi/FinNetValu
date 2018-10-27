@@ -64,6 +64,10 @@ function valuation!(y, net::NEVAModel, x, a)
     y .= a .* net.𝕍ᵉ(net, x, a) .+ rowsums(net.A .* net.𝕍(net, x, a)) .- net.l
 end
 
+function valuation(net::NEVAModel, x, a)
+    a .* net.𝕍ᵉ(net, x, a) .+ rowsums(net.A .* net.𝕍(net, x, a)) .- net.l
+end
+
 function solvent(net::NEVAModel, x)
     x .> zero(eltype(x))
 end

@@ -1,4 +1,5 @@
 import Base.show
+using LinearAlgebra
 
 """
     XOSModel(N, Mˢ, Mᵈ, Mᵉ, d)
@@ -14,11 +15,11 @@ struct XOSModel <: FinancialModel
     Mᵉ
     d
 
-    function XOSModel(N::Integer, Mˢ, Mᵈ, Mᵉ, d)
+    function XOSModel(Mˢ, Mᵈ, Mᵉ, d::AbstractVector)
         @assert isleft_substochastic(Mˢ)
         @assert isleft_substochastic(Mᵈ)
         @assert all(d .>= 0)
-        new(N, Mˢ, Mᵈ, Mᵉ, d)
+        new(length(d), Mˢ, Mᵈ, Mᵉ, d)
     end
 end
 
@@ -49,6 +50,24 @@ function valuation!(y, net::XOSModel, x, a)
     tmp = net.Mᵉ * a .+ net.Mˢ * x[ei] .+ net.Mᵈ * x[di]
     y[ei] .= max.(zero(eltype(x)), tmp .- net.d)
     y[di] .= min.(net.d, tmp)
+end
+
+function valuation(net::XOSModel, x, a)
+    ei = _eqidx(net)
+    di = _dbidx(net)
+    tmp = net.Mᵉ * a .+ net.Mˢ * x[ei] .+ net.Mᵈ * x[di]
+    vcat(max.(zero(eltype(x)), tmp .- net.d),
+         min.(net.d, tmp))
+end
+
+function fixjacobian(net::XOSModel, a, x = fixvalue(net, a))
+    ## Uses analytical formulas for speedup
+    ξ = solvent(net, x)
+    eins = one(eltype(ξ))
+    dVdx = vcat(hcat(Diagonal(ξ) * net.Mˢ, Diagonal(ξ) * net.Mᵈ),
+                hcat(Diagonal(eins .- ξ) * net.Mˢ, Diagonal(eins .- ξ) * net.Mᵈ))
+    dVda = vcat(Diagonal(ξ), Diagonal(1.0 .- ξ)) * net.Mᵉ
+    (I - dVdx) \ Matrix(dVda) ## Note: RHS needs to be dense
 end
 
 function solvent(net::XOSModel, x)

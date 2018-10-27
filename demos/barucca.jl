@@ -15,8 +15,8 @@ modelF   = FurfineModel(Lᵉ, A', 0.0)
 modelLDR = LinearDebtRankModel(Lᵉ, A')
 
 function runshocks(model, Aᵉ, shocks)
-    E₀ = value(model, Aᵉ)
-    ΔE(α)  = E₀ .- value(model, (1 - α) .* Aᵉ)
+    E₀ = fixvalue(model, Aᵉ)
+    ΔE(α)  = E₀ .- fixvalue(model, (1 - α) .* Aᵉ)
     ΔAᵉ(α) = α .* Aᵉ
     [sum(ΔE(α) .- ΔAᵉ(α)) / sum(model.A) for α in shocks]
 end
