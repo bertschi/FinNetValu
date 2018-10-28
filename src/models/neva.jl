@@ -88,6 +88,21 @@ bookequity(net::NEVAModel, a) = a .+ rowsums(net.A) .- net.l
 # arxiv???                               #
 ##########################################
 
+"""
+    EisenbergNoeModel(Lᵉ, L)
+
+Creates an instance of the NEVAModel with valuation functions
+
+\$\\begin{align}
+\\mathbb{V}^e_i(E_i) &= 1 \\quad \\forall i \\\\
+\\mathbb{V}_{ij}(E_j) &= \\unicode{x1D7D9}_{E_j \\geq 0} + \\left(\\frac{E_j + \\bar{p}_j}{\\bar{p}_j}\\right)^+ \\unicode{x1D7D9}_{E_j < 0} \\quad \\forall i, j
+\\end{align}\$
+
+where \$\\bar{p}_j = \\sum_k L_{jk}\$.
+
+This valuation was shown to correspond to the model by Eisenberg &
+Noe.
+"""
 function EisenbergNoeModel(Lᵉ::AbstractVector, L::AbstractMatrix)
     pbar = vec(sum(L; dims = 2))
     function val(net, e, a)
