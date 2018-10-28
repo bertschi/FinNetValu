@@ -23,7 +23,7 @@ value for `n` successive calls, i.e. `f` is invoked once for every `n`
 calls of `calm(f, n)`.  
 """
 function calm(f, n)
-    i = 1
+    i = 0
     val = f()
     function calmed()
         if i == n
