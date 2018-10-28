@@ -45,17 +45,13 @@ end
 numfirms(net::XOSModel) = net.N
 
 function valuation!(y, net::XOSModel, x, a)
-    ei = _eqidx(net)
-    di = _dbidx(net)
-    tmp = net.Mᵉ * a .+ net.Mˢ * x[ei] .+ net.Mᵈ * x[di]
-    y[ei] .= max.(zero(eltype(x)), tmp .- net.d)
-    y[di] .= min.(net.d, tmp)
+    tmp = net.Mᵉ * a .+ net.Mˢ * equityview(net, x) .+ net.Mᵈ * debtview(net, x)
+    equityview(net, y) .= max.(zero(eltype(x)), tmp .- net.d)
+    debtview(net, y)   .= min.(net.d, tmp)
 end
 
 function valuation(net::XOSModel, x, a)
-    ei = _eqidx(net)
-    di = _dbidx(net)
-    tmp = net.Mᵉ * a .+ net.Mˢ * x[ei] .+ net.Mᵈ * x[di]
+    tmp = net.Mᵉ * a .+ net.Mˢ * equityview(net, x) .+ net.Mᵈ * debtview(net, x)
     vcat(max.(zero(eltype(x)), tmp .- net.d),
          min.(net.d, tmp))
 end
@@ -71,7 +67,7 @@ function fixjacobian(net::XOSModel, a, x = fixvalue(net, a))
 end
 
 function solvent(net::XOSModel, x)
-    equity(net, x) .> zero(eltype(x))
+    equityview(net, x) .> zero(eltype(x))
 end
 
 function init(net::XOSModel, a)
@@ -82,11 +78,24 @@ end
 # Model specific methods #
 ##########################
 
-_eqidx(net::XOSModel) = 1:numfirms(net)
-function _dbidx(net::XOSModel)
-    N = numfirms(net)
-    (N+1):(2*N)
-end
+"""
+    equityview(net, x)
 
-equity(net::XOSModel, x) = x[_eqidx(net)]
-debt(net::XOSModel, x) = x[_dbidx(net)]
+View the equity part of `x` which can be a state vector of Jacobian
+matrix.
+"""
+function equityview end
+
+"""
+    debtview(net, x)
+
+View the debt part of `x` which can be a state vector of Jacobian
+matrix.
+"""
+function debtview end
+
+equityview(net::XOSModel, x::AbstractVector) = view(x, 1:numfirms(net))
+equityview(net::XOSModel, x::AbstractMatrix) = view(x, 1:numfirms(net), :)
+
+debtview(net::XOSModel, x::AbstractVector) = begin N = numfirms(net); view(x, (N+1):(2*N)) end
+debtview(net::XOSModel, x::AbstractMatrix) = begin N = numfirms(net); view(x, (N+1):(2*N), :) end

@@ -21,8 +21,8 @@ function delta(net, a₀, θ, Z)
     dVda₀ = discount(θ) * dVdA * dAda₀
 
     N = numfirms(net)
-    deltaEq = sum(dVda₀[FinNetValu._eqidx(net), :]) / N
-    deltaDb = sum(dVda₀[FinNetValu._dbidx(net), :]) / N
+    deltaEq = sum(equityview(net, dVda₀)) / N
+    deltaDb = sum(debtview(net, dVda₀)) / N
     [deltaEq, deltaDb, deltaEq + deltaDb]
 end
 

@@ -52,7 +52,7 @@ plot(df,
 function defaultspread(net, θ)
     function f(Z)
         A = Aτ(1.0, θ, Z)
-        F = discount(θ) .* debt(net, fixvalue(net, A))
+        F = discount(θ) .* debtview(net, fixvalue(net, A))
     end
     F₀ = expectation(f, MonteCarloSampler(MvNormal(numfirms(net), 1.0)), 7500)
                      
