@@ -6,16 +6,6 @@ Create constant function that returns `val` when called.
 constantly(val) = (x...) -> val
 
 """
-    fillrows(v)
-
-Fills a square matrix by repeating a vector `v` rowwise.
-"""
-function fillrows(v::AbstractVector)
-    D = length(v)
-    repeat(reshape(v, 1, D), D, 1)
-end
-
-"""
     calm(f, n)
 
 Create a new function that behaves like `f()` but returns the same
