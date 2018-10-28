@@ -26,11 +26,6 @@ function delta(net, a₀, θ, Z)
     [deltaEq, deltaDb, deltaEq + deltaDb]
 end
 
-θ = BlackScholesParams(0.0, 1.0, 0.4)
-N = 60
-k = 3.0
-wᵈ = 0.6
-
 function randnet(N, k, wᵈ)
     p = k / (N - 1)
     XOSModel(sparse(zeros(N, N)),
@@ -38,14 +33,22 @@ function randnet(N, k, wᵈ)
              I, ones(N))
 end
 
-nextnet = calm(() -> randnet(N, k, wᵈ), 25)
+function main(N, numsamples)
+    θ = BlackScholesParams(0.0, 1.0, 0.4)
+    k = 3.0
+    wᵈ = 0.6
 
-a₀ = range(0, length = 31, stop = 2.0)
-@time Δ = collect(expectation(z -> delta(nextnet(), a * ones(N), θ, z),
-                              MonteCarloSampler(MvNormal(N, 1.0)),
-                              1000)
-                  for a in a₀)
+    nextnet = calm(() -> randnet(N, k, wᵈ), 100)
+    
+    a₀ = range(0, length = 31, stop = 2.0)
+    Δ = collect(expectation(z -> delta(nextnet(), a * ones(N), θ, z),
+                            MonteCarloSampler(MvNormal(N, 1.0)),
+                            numsamples)
+                for a in a₀)
+    a₀, Δ
+end
 
+@time a₀, Δ = main(60, 1000)
 plot(stack(DataFrame(a₀= a₀,
                      Equity = map(x -> x[1], Δ),
                      Debt = map(x -> x[2], Δ),
