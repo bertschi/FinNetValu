@@ -62,7 +62,7 @@ struct MonteCarloSampler{T}
     p::T
 
     function MonteCarloSampler(p::Distribution)
-        new{typeof(T)}(p)
+        new{typeof(p)}(p)
     end
 end
 
