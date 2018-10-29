@@ -56,3 +56,39 @@ end
 #            [:Equity, :Debt, :Value]),
 #      x = :a₀, y = :value, color = :variable,
 #      Geom.line)
+
+"""
+Compute Greeks for given `net` at initial asset values `a₀`
+and random variate `Z` for Black-Scholes world `θ`.  
+"""
+function calc_greeks(net, a₀, θ, Z)
+    @assert length(a₀) == numfirms(net)
+
+    A = Aτ(a₀, θ, Z)
+    x = fixvalue(net, A)
+    dVdA = fixjacobian(net, A, x)
+
+    r, tau, sig = 1:3
+    a = 4:(numfirms(net)+3)
+    dAdg = ForwardDiff.jacobian(g -> Aτ(g[a],
+                                        BlackScholesParams(g[r], g[tau], g[sig]),
+                                        Z),
+                                vcat(θ.r, θ.τ, θ.σ, a₀))
+    dVdg = discount(θ) * dVdA * dAdg
+    dVdg[:, tau] .+= - θ.r .* discount(θ) .* x
+    dVdg[:, tau] .*= - 1
+    dVdg[:, r]   .+= - θ.τ .* discount(θ) .* x
+
+    dVdg
+end
+
+function greeks(N, θ, k, wᵈ, numsamples)
+    nextnet = calm(() -> randnet(N, k, wᵈ), 100)
+    a₀ = range(0, length = 31, stop = 2.0)
+    g = collect(expectation(z -> calc_greeks(nextnet(), a * ones(N), θ, z),
+                            MonteCarloSampler(MvNormal(N, 1.0)),
+                            numsamples)
+                for a in a₀)
+    net = nextnet()
+    a₀, map(dVdg -> sum(equityview(net, dVdg); dims = 1), g), map(dVdg -> sum(debtview(net, dVdg); dims = 1), g)
+end

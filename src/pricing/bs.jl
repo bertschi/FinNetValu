@@ -11,11 +11,11 @@ case, Brownian motions can be correlated with `Lᵨ` specifying the
 Cholesky factor of their correlation matrix.
 """
 
-struct BlackScholesParams{S,T}
-    r::Float64
-    τ::Float64
-    σ::S
-    Lᵨ::T
+struct BlackScholesParams{T1,T2,T3}
+    r::T1
+    τ::T1
+    σ::T2
+    Lᵨ::T3
 end
 
 BlackScholesParams(r, τ, σ) = BlackScholesParams(r, τ, σ, I)
