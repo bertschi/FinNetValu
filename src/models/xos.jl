@@ -8,18 +8,18 @@ Financial network of `N` firms with investment portfolios `Mˢ`, `Mᵈ`
 and `Mᵉ` of holding fractions in counterparties equity, debt and
 external assets respectively. Nominal debt `d` is due at maturity.
 """
-struct XOSModel <: FinancialModel
-    N
-    Mˢ
-    Mᵈ
-    Mᵉ
-    d
+struct XOSModel{T1,T2,T3,U} <: FinancialModel
+    N::Int64
+    Mˢ::T1
+    Mᵈ::T2
+    Mᵉ::T3
+    d::U
 
-    function XOSModel(Mˢ, Mᵈ, Mᵉ, d::AbstractVector)
+    function XOSModel(Mˢ::T1, Mᵈ::T2, Mᵉ::T3, d::AbstractVector) where {T1,T2,T3}
         @assert isleft_substochastic(Mˢ)
         @assert isleft_substochastic(Mᵈ)
         @assert all(d .>= 0)
-        new(length(d), Mˢ, Mᵈ, Mᵉ, d)
+        new{T1,T2,T3,typeof(d)}(length(d), Mˢ, Mᵈ, Mᵉ, d)
     end
 end
 

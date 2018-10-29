@@ -48,11 +48,11 @@ function main(N, numsamples)
     a₀, Δ
 end
 
-@time a₀, Δ = main(60, 1000)
-plot(stack(DataFrame(a₀= a₀,
-                     Equity = map(x -> x[1], Δ),
-                     Debt = map(x -> x[2], Δ),
-                     Value = map(x -> x[3], Δ)),
-           [:Equity, :Debt, :Value]),
-     x = :a₀, y = :value, color = :variable,
-     Geom.line)
+# @time a₀, Δ = main(60, 1000)
+# plot(stack(DataFrame(a₀= a₀,
+#                      Equity = map(x -> x[1], Δ),
+#                      Debt = map(x -> x[2], Δ),
+#                      Value = map(x -> x[3], Δ)),
+#            [:Equity, :Debt, :Value]),
+#      x = :a₀, y = :value, color = :variable,
+#      Geom.line)
