@@ -14,6 +14,8 @@ spA3 = spzeros(2, 4)
 spA3[1,1] = .3; spA3[1,2] = .2; spA3[2,1] = .2; spA3[2,2] = .1
 spA4 = spzeros(4, 2)
 spA4[1,1] = .3; spA4[1,2] = .2; spA4[2,1] = .2; spA4[2,2] = .1; spA4[3,1] = 0.5; spA4[3,2] = .7
+spFull_3 = spzeros(3,3)
+spFull_3[1,2] = 1; spFull_3[1,3] = 1; spFull_3[2,1] = 1; spFull_3[2,3] = 1; spFull_3[3,1] = 1; spFull_3[3,2] = 1;
 
 @testset "rowsums" begin
     @test FinNetValu.rowsums(A1) == [0, 0]
@@ -37,4 +39,17 @@ end
 end
 
 @testset "erdosrenyi" begin
+    @test_throws ArgumentError FinNetValu.erdosrenyi(0, -1)
+    @test_throws ArgumentError FinNetValu.erdosrenyi(0, 1)
+    @test FinNetValu.erdosrenyi(1, 0) == spzeros(1,1)
+    @test FinNetValu.erdosrenyi(2, 0) == spzeros(2,2)
+    @test FinNetValu.erdosrenyi(3, 1) == spFull_3
+    @test FinNetValu.erdosrenyi(3, 1, false) == spFull_3
+end
+
+@testset "rescale" begin
+    @test FinNetValu.rescale(A5, 0.3) == FinNetValu.rescale(A5, [0.3, 0.3, 0.3])
+    @test FinNetValu.rescale(A2, 1) == A2
+    @test FinNetValu.rescale(A2, 0) == 0*A2
+    @test_throws MethodError FinNetValu.rescale(A2, 0.5) == 0.5*A2
 end
