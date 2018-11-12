@@ -3,6 +3,7 @@
 ####################################
 
 using SparseArrays
+using ArgCheck
 
 """
     rowsums(A)
@@ -26,7 +27,8 @@ end
 Generate random adjacency matrix from Erdos-Renyi random graph ensemble with `N` nodes and connection probability `p`. The network is directed by default.
 """
 function erdosrenyi(N::Integer, p::Real, directed = true)
-    @assert 0.0 <= p <= 1.0
+    @argcheck 0.0 <= p <= 1.0
+    @argcheck 0 < N
     A = spzeros(N, N)
     for i = 1:N
         if directed
@@ -59,7 +61,7 @@ function rescale(A::AbstractMatrix{T}, w::T) where T
 end
 
 function rescale(A::AbstractMatrix{T}, w::AbstractVector{T}) where T
-    @assert size(A, 2) == length(w)
+    @argcheck size(A, 2) == length(w)
     B = similar(A)
     for j = 1:size(A, 2)
         s = sum(A[:, j])
