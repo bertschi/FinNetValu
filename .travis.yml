@@ -9,8 +9,8 @@ os:
     - osx
 
 after_success:
-- julia -e 'cd(Pkg.dir("MyPkg")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
-coveralls: true
-codecov: true
+    - julia -e 'cd(Pkg.dir("MyPkg")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
+#coveralls: true
+#codecov: true
 matrix:
 fast_finish: true
