@@ -2,15 +2,15 @@ language: julia
 julia:
     - 0.7
     - 1.0
-    - release
-    - nightly
+#    - release
+#    - nightly
 os:
     - linux
     - osx
 
 after_success:
     - julia -e 'cd(Pkg.dir("FinNetValu")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
-coveralls: true
-codecov: true
+#coveralls: true
+#codecov: true
 matrix:
 fast_finish: true
