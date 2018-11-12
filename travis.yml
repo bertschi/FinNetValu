@@ -1,0 +1,13 @@
+language: julia
+julia:
+    - 0.7
+    - 1.0
+    - release
+    - nightly
+os:
+    - linux
+    - osx
+coveralls: true
+codecov: true
+matrix:
+fast_finish: true
