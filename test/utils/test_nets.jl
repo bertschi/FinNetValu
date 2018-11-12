@@ -35,3 +35,6 @@ end
     @test FinNetValu.isleft_substochastic(spA3) == true
     @test FinNetValu.isleft_substochastic(spA4) == true
 end
+
+@testset "erdosrenyi" begin
+end
