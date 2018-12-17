@@ -18,11 +18,13 @@ export bookequity, equityview, debtview
 # Pricing helpers
 export BlackScholesParams, Aτ, discount
 # Monte-Carlo helpers
-export MonteCarloSampler, sample, expectation
+# export MonteCarloSampler, sample, expectation
+export MonteCarloSampler, samplesampler, expectation
 
 # Functional utils
 export constantly, calm
 # Network utils
-export erdosrenyi, rescale
+export erdosrenyi, rescale, barabasialbert
+
 
 end # module

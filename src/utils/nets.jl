@@ -4,6 +4,7 @@
 
 using SparseArrays
 using ArgCheck
+using StatsBase
 
 """
     rowsums(A)
@@ -20,11 +21,13 @@ Check if matrix `A` is left-substochastic.
 function isleft_substochastic(A::AbstractMatrix)
     all(zero(eltype(A)) .<= sum(A; dims = 1) .<= one(eltype(A)))
 end
-    
+
 """
     erdosrenyi(N, p, directed)
 
-Generate random adjacency matrix from Erdos-Renyi random graph ensemble with `N` nodes and connection probability `p`. The network is directed by default.
+Generate random adjacency matrix from Erdos-Renyi random graph
+ensemble with `N` nodes and connection probability `p`. The network
+is directed by default.
 """
 function erdosrenyi(N::Integer, p::Real, directed = true)
     @argcheck 0.0 <= p <= 1.0
@@ -73,3 +76,85 @@ function rescale(A::AbstractMatrix{T}, w::AbstractVector{T}) where T
     end
     B
 end
+
+"""
+    m0graph(N, m0, A)
+
+Creates initial random graph of 'm0' connected nodes. 'm0' < 'N' and
+the resulting random graph is a subgraph of 'A'. This is required for
+the Barabasi-Albert model.
+"""
+function m0graph(N::Integer, m0::Integer, A::AbstractMatrix)
+    # list of all nodes
+    nodes = [1:m0;]
+    # create initial randomly connected graph
+    for i in nodes
+        # from the list of nodes randomly sample x nodes that the current
+        # node is connected to, whereby x is also randomly sampled
+        j = sample(nodes[1:end .!= i], rand(1:m0-1), replace = false)
+        A[i, j] .= 1.0
+        A[j, i] .= 1.0
+    end
+    return A
+end
+
+"""
+    barabasialbert(N, m)
+
+Creates a random graph based on preferential attachment, as described by
+the model by Barabasi and Albert. The graph has 'N' nodes each with 'm'
+edges.
+"""
+function barabasialbert(N::Integer, m::Integer)
+    @argcheck 1 < m < N
+    # adjacency matrix
+    A = spzeros(N, N)
+    # create initial random subgraph
+    A = m0graph(N, m, A)
+
+    inds = findall(x -> x != 0.0, A)
+    # array in which each node occurs as many times as it has edges
+    repeatednodes = [inds[i][2] for i=1:size(inds)[1]]
+
+    newnode = m+1
+    # preferential attachment
+    while newnode <= N
+        # sample 'm' new neighbour nodes based on their degree weights
+        j = sample(1:newnode-1, Weights(attachmentweights(repeatednodes)), m, replace=false)
+        A[newnode, j] .= 1.0
+        A[j, newnode] .= 1.0
+
+        # add new edges to list of repeated nodes
+        append!(repeatednodes, j)
+        append!(repeatednodes, newnode*ones(size(j)[1]))
+
+        newnode += 1
+    end
+    return A
+end
+
+"""
+    attachmentweights(repeatednodes)
+
+Compute weights for preferential attachment. For each node of the graph
+specified in the array of repeated nodes, 'repeatednodes', compute
+``k\\_i/(\\sum\\_j k\\_j)`` where ``k\\_i`` is the degree of node i.
+Specifically, 'repeatednodes' is an array of nodes, where each node
+occurs as many times as it has edges.
+"""
+function attachmentweights(repeatednodes::Array{Int64})
+    nodes = unique(repeatednodes)
+    # array to store the weights
+    w = ones(length(nodes))
+    for i in nodes
+        w[i] = length(findall(x -> x == i, repeatednodes))/
+                length(repeatednodes)
+    end
+    return w
+end
+
+# function main()
+#     show(barabasialbert(8,2))
+# end
+# 
+# main()

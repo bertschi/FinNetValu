@@ -17,6 +17,13 @@ spA4[1,1] = .3; spA4[1,2] = .2; spA4[2,1] = .2; spA4[2,2] = .1; spA4[3,1] = 0.5;
 spFull_3 = spzeros(3,3)
 spFull_3[1,2] = 1; spFull_3[1,3] = 1; spFull_3[2,1] = 1; spFull_3[2,3] = 1; spFull_3[3,1] = 1; spFull_3[3,2] = 1;
 
+spA5 = spzeros(3,3)
+spA5[1,2] = 1.0; spA5[2,1] = 1.0
+a1 = [1, 2, 3, 2, 1]
+a2 = [1, 1, 1, 2, 3, 3, 2, 4, 4, 3]
+k1 = [2/5, 2/5, 1/5]
+k2 = [3/10, 2/10, 3/10, 2/10]
+
 @testset "rowsums" begin
     @test FinNetValu.rowsums(A1) == [0, 0]
     @test FinNetValu.rowsums(A2) == [1, 1]
@@ -52,4 +59,20 @@ end
     @test FinNetValu.rescale(A2, 1) == A2
     @test FinNetValu.rescale(A2, 0) == 0*A2
     @test_throws MethodError FinNetValu.rescale(A2, 0.5) == 0.5*A2
+end
+
+@testset "m0graph" begin
+    @test FinNetValu.m0graph(3, 2, spzeros(3,3)) != false
+    @test FinNetValu.m0graph(3, 2, spzeros(3,3)) == spA5
+end
+
+@testset "barabasialbert" begin
+    @test FinNetValu.barabasialbert(3, 2) != false
+    @test_throws ArgumentError FinNetValu.barabasialbert(2, 3)
+end
+
+@testset "attachmentweights" begin
+    @test FinNetValu.attachmentweights(a1) != false
+    @test FinNetValu.attachmentweights(a1) == k1
+    @test FinNetValu.attachmentweights(a2) == k2
 end

@@ -10,7 +10,7 @@ Base type for Monte-Carlo samplers.
 abstract type AbstractSampler end
 
 """
-Samples holds `val` with `weight`. 
+Samples holds `val` with `weight`.
 """
 struct Sample{T}
     val::T
@@ -24,11 +24,11 @@ end
 Chain{T} = Vector{Sample{T}} where T
 
 """
-    sample(sampler, N)
+    samplesampler(sampler, N)
 
 Draw `N` samples using the supplied `sampler`.
 """
-function sample end
+function samplesampler end
 
 """
     expectation(f, sampler, N)
@@ -66,7 +66,7 @@ struct MonteCarloSampler{T}
     end
 end
 
-sample(s::MonteCarloSampler, N::Integer) = [Sample(rand(s.p)) for _ in 1:N]
+samplesampler(s::MonteCarloSampler, N::Integer) = [Sample(rand(s.p)) for _ in 1:N]
 
 function expectation(f::Function, s::MonteCarloSampler, N::Integer)
     @assert N > 0
