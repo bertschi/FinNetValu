@@ -69,6 +69,7 @@ end
 @testset "barabasialbert" begin
     @test FinNetValu.barabasialbert(3, 2) != false
     @test_throws ArgumentError FinNetValu.barabasialbert(2, 3)
+    @test_throws ArgumentError FinNetValu.barabasialbert(2, 1)
 end
 
 @testset "attachmentweights" begin

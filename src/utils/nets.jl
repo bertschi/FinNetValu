@@ -87,7 +87,7 @@ the Barabasi-Albert model.
 function m0graph(N::Integer, m0::Integer, A::AbstractMatrix)
     # list of all nodes
     nodes = [1:m0;]
-    # create initial randomly connected graph
+    # create initial, randomly connected graph
     for i in nodes
         # from the list of nodes randomly sample x nodes that the current
         # node is connected to, whereby x is also randomly sampled
@@ -112,15 +112,16 @@ function barabasialbert(N::Integer, m::Integer)
     # create initial random subgraph
     A = m0graph(N, m, A)
 
+    # create array in which each node occurs as many times as it has edges
     inds = findall(x -> x != 0.0, A)
-    # array in which each node occurs as many times as it has edges
     repeatednodes = [inds[i][2] for i=1:size(inds)[1]]
 
     newnode = m+1
     # preferential attachment
     while newnode <= N
         # sample 'm' new neighbour nodes based on their degree weights
-        j = sample(1:newnode-1, Weights(attachmentweights(repeatednodes)), m, replace=false)
+        j = sample(1:newnode-1, Weights(attachmentweights(repeatednodes)),
+                    m, replace=false)
         A[newnode, j] .= 1.0
         A[j, newnode] .= 1.0
 
@@ -156,5 +157,5 @@ end
 # function main()
 #     show(barabasialbert(8,2))
 # end
-# 
+#
 # main()
