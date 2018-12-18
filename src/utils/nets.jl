@@ -78,22 +78,30 @@ function rescale(A::AbstractMatrix{T}, w::AbstractVector{T}) where T
 end
 
 """
-    m0graph(N, m0, A)
+    m0graph(N, m0)
 
 Creates initial random graph of 'm0' connected nodes. 'm0' < 'N' and
-the resulting random graph is a subgraph of 'A'. This is required for
-the Barabasi-Albert model.
+the resulting random graph is a subgraph of the entire graph specified
+by the adjacency matrix 'A'. This subgraph is required for the
+Barabasi-Albert model.
 """
-function m0graph(N::Integer, m0::Integer, A::AbstractMatrix)
-    # list of all nodes
+function m0graph(N::Integer, m0::Integer)
+    @argcheck 0 < m0 < N
+    # adjacency matrix of entire graph
+    A = spzeros(N, N)
+    # list of all nodes of subgraph
     nodes = [1:m0;]
     # create initial, randomly connected graph
-    for i in nodes
-        # from the list of nodes randomly sample x nodes that the current
-        # node is connected to, whereby x is also randomly sampled
-        j = sample(nodes[1:end .!= i], rand(1:m0-1), replace = false)
-        A[i, j] .= 1.0
-        A[j, i] .= 1.0
+    if m0 == 1
+        return A
+    else
+        for i in nodes
+            # from the list of nodes randomly sample x nodes that the current
+            # node is connected to, whereby x is also randomly sampled
+            j = sample(nodes[1:end .!= i], rand(1:m0-1), replace = false)
+            A[i, j] .= 1.0
+            A[j, i] .= 1.0
+        end
     end
     return A
 end
@@ -106,11 +114,10 @@ the model by Barabasi and Albert. The graph has 'N' nodes each with 'm'
 edges.
 """
 function barabasialbert(N::Integer, m::Integer)
-    @argcheck 1 < m < N
-    # adjacency matrix
-    A = spzeros(N, N)
+    @argcheck 1 <= m < N
+
     # create initial random subgraph
-    A = m0graph(N, m, A)
+    A = m0graph(N, m)
 
     # create array in which each node occurs as many times as it has edges
     inds = findall(x -> x != 0.0, A)
@@ -120,8 +127,12 @@ function barabasialbert(N::Integer, m::Integer)
     # preferential attachment
     while newnode <= N
         # sample 'm' new neighbour nodes based on their degree weights
-        j = sample(1:newnode-1, Weights(attachmentweights(repeatednodes)),
+        if newnode == 2     # if m0graph is only node 1
+            j = sample(1:newnode-1, m, replace=false)
+        else
+            j = sample(1:newnode-1, Weights(attachmentweights(repeatednodes)),
                     m, replace=false)
+        end
         A[newnode, j] .= 1.0
         A[j, newnode] .= 1.0
 
@@ -153,9 +164,3 @@ function attachmentweights(repeatednodes::Array{Int64})
     end
     return w
 end
-
-# function main()
-#     show(barabasialbert(8,2))
-# end
-#
-# main()
