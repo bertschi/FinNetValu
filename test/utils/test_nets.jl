@@ -75,9 +75,3 @@ end
     @test_throws ArgumentError FinNetValu.initm0graph(3, 1)
     @test_throws ArgumentError FinNetValu.initm0graph(3, 3)
 end
-
-@testset "attachmentweights" begin
-    @test FinNetValu.attachmentweights(a1) != false
-    @test FinNetValu.attachmentweights(a1) == k1
-    @test FinNetValu.attachmentweights(a2) == k2
-end

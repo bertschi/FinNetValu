@@ -101,10 +101,7 @@ function barabasialbert(N::Integer, m::Integer, initgraph="random")
     # preferential attachment
     while newnode <= N
         # sample 'm' new neighbour nodes based on their degree weights
-        j = StatsBase.sample(1:newnode-1,
-                    StatsBase.Weights(attachmentweights(repeatednodes)),
-                    m, replace=false)
-
+        j = StatsBase.sample(repeatednodes, m, replace=false)
         A[newnode, j] .= 1.0
         A[j, newnode] .= 1.0
 
@@ -114,6 +111,7 @@ function barabasialbert(N::Integer, m::Integer, initgraph="random")
 
         newnode += 1
     end
+    show(A)
     return A
 end
 
@@ -140,26 +138,4 @@ function initm0graph(N::Integer, m0::Integer)
         A[j, i] .= 1.0
     end
     return A
-end
-
-"""
-    attachmentweights(repeatednodes)
-
-Compute weights for preferential attachment. For each node of the graph
-specified in the array of repeated nodes, 'repeatednodes', compute
-``k\\_i/(\\sum\\_j k\\_j)`` where ``k\\_i`` is the degree of node i.
-Specifically, 'repeatednodes' is an array of nodes, where each node
-occurs as many times as it has edges.
-"""
-function attachmentweights(repeatednodes::Array{Int64})
-    nodes = unique(repeatednodes)
-    # array to store the weights
-    w = ones(length(nodes))
-    for i in nodes
-        # degree of node divided by total number of edges
-        w[i] = length(findall(x -> x == i, repeatednodes))/
-                length(repeatednodes)
-    end
-    # end
-    return w
 end
