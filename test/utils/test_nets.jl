@@ -63,19 +63,19 @@ end
     @test_throws MethodError FinNetValu.rescale(A2, 0.5) == 0.5*A2
 end
 
+@testset "barabasialbert" begin
+    @test FinNetValu.barabasialbert(3, 2) != false
+    @test_throws ArgumentError FinNetValu.barabasialbert(2, 3)
+    @test_throws ArgumentError FinNetValu.barabasialbert(2, 0)
+    @test FinNetValu.barabasialbert(2, 1) == spA6
+end
+
 @testset "m0graph" begin
     @test FinNetValu.m0graph(3, 2) != false
     @test FinNetValu.m0graph(3, 2) == spA5
     @test FinNetValu.m0graph(3, 1) == spzeros(3,3)
     @test_throws ArgumentError FinNetValu.m0graph(3, 0)
     @test_throws ArgumentError FinNetValu.m0graph(3, 3)
-end
-
-@testset "barabasialbert" begin
-    @test FinNetValu.barabasialbert(3, 2) != false
-    @test_throws ArgumentError FinNetValu.barabasialbert(2, 3)
-    @test_throws ArgumentError FinNetValu.barabasialbert(2, 0)
-    @test FinNetValu.barabasialbert(2, 1) == spA6
 end
 
 @testset "attachmentweights" begin

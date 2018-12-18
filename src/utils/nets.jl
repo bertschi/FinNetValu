@@ -78,35 +78,6 @@ function rescale(A::AbstractMatrix{T}, w::AbstractVector{T}) where T
 end
 
 """
-    m0graph(N, m0)
-
-Creates initial random graph of 'm0' connected nodes. 'm0' < 'N' and
-the resulting random graph is a subgraph of the entire graph specified
-by the adjacency matrix 'A'. This subgraph is required for the
-Barabasi-Albert model.
-"""
-function m0graph(N::Integer, m0::Integer)
-    @argcheck 0 < m0 < N
-    # adjacency matrix of entire graph
-    A = spzeros(N, N)
-    # list of all nodes of subgraph
-    nodes = [1:m0;]
-    # create initial, randomly connected graph
-    if m0 == 1
-        return A
-    else
-        for i in nodes
-            # from the list of nodes randomly sample x nodes that the current
-            # node is connected to, whereby x is also randomly sampled
-            j = sample(nodes[1:end .!= i], rand(1:m0-1), replace = false)
-            A[i, j] .= 1.0
-            A[j, i] .= 1.0
-        end
-    end
-    return A
-end
-
-"""
     barabasialbert(N, m)
 
 Creates a random graph based on preferential attachment, as described by
@@ -141,6 +112,35 @@ function barabasialbert(N::Integer, m::Integer)
         append!(repeatednodes, newnode*ones(size(j)[1]))
 
         newnode += 1
+    end
+    return A
+end
+
+"""
+    m0graph(N, m0)
+
+Creates initial random graph of 'm0' connected nodes. 'm0' < 'N' and
+the resulting random graph is a subgraph of the entire graph specified
+by the adjacency matrix 'A'. This subgraph is required for the
+Barabasi-Albert model.
+"""
+function m0graph(N::Integer, m0::Integer)
+    @argcheck 0 < m0 < N
+    # adjacency matrix of entire graph
+    A = spzeros(N, N)
+    # list of all nodes of subgraph
+    nodes = [1:m0;]
+    # create initial, randomly connected graph
+    if m0 == 1
+        return A
+    else
+        for i in nodes
+            # from the list of nodes randomly sample x nodes that the current
+            # node is connected to, whereby x is also randomly sampled
+            j = sample(nodes[1:end .!= i], rand(1:m0-1), replace = false)
+            A[i, j] .= 1.0
+            A[j, i] .= 1.0
+        end
     end
     return A
 end
