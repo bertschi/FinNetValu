@@ -4,7 +4,7 @@
 
 using SparseArrays
 using ArgCheck
-using StatsBase
+import StatsBase
 
 """
     rowsums(A)
@@ -99,9 +99,10 @@ function barabasialbert(N::Integer, m::Integer)
     while newnode <= N
         # sample 'm' new neighbour nodes based on their degree weights
         if newnode == 2     # if m0graph is only node 1
-            j = sample(1:newnode-1, m, replace=false)
+            j = StatsBase.sample(1:newnode-1, m, replace=false)
         else
-            j = sample(1:newnode-1, Weights(attachmentweights(repeatednodes)),
+            j = StatsBase.sample(1:newnode-1,
+                    StatsBase.Weights(attachmentweights(repeatednodes)),
                     m, replace=false)
         end
         A[newnode, j] .= 1.0
@@ -137,7 +138,7 @@ function m0graph(N::Integer, m0::Integer)
         for i in nodes
             # from the list of nodes randomly sample x nodes that the current
             # node is connected to, whereby x is also randomly sampled
-            j = sample(nodes[1:end .!= i], rand(1:m0-1), replace = false)
+            j = StatsBase.sample(nodes[1:end .!= i], rand(1:m0-1), replace = false)
             A[i, j] .= 1.0
             A[j, i] .= 1.0
         end

@@ -18,8 +18,7 @@ export bookequity, equityview, debtview
 # Pricing helpers
 export BlackScholesParams, Aτ, discount
 # Monte-Carlo helpers
-# export MonteCarloSampler, sample, expectation
-export MonteCarloSampler, samplesampler, expectation
+export MonteCarloSampler, sample, expectation
 
 # Functional utils
 export constantly, calm

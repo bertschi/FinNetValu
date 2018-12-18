@@ -28,7 +28,7 @@ Chain{T} = Vector{Sample{T}} where T
 
 Draw `N` samples using the supplied `sampler`.
 """
-function samplesampler end
+function sample end
 
 """
     expectation(f, sampler, N)
@@ -66,7 +66,7 @@ struct MonteCarloSampler{T}
     end
 end
 
-samplesampler(s::MonteCarloSampler, N::Integer) = [Sample(rand(s.p)) for _ in 1:N]
+sample(s::MonteCarloSampler, N::Integer) = [Sample(rand(s.p)) for _ in 1:N]
 
 function expectation(f::Function, s::MonteCarloSampler, N::Integer)
     @assert N > 0
