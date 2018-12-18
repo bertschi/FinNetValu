@@ -82,4 +82,5 @@ end
     @test FinNetValu.attachmentweights(a1) != false
     @test FinNetValu.attachmentweights(a1) == k1
     @test FinNetValu.attachmentweights(a2) == k2
+    @test FinNetValu.attachmentweights([]) == [1]
 end
