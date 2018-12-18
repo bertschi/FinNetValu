@@ -6,6 +6,7 @@ A3 = [1 2 3; 5 4 2; 7 2 5]
 A4 = [.1 .2 .3; .3 .4 .2; .1 .2 .5]
 A5 = [.5 .2 .3; .3 .4 .3; .2 .2 .3]
 A6 = [.5 .9 .3; .3 .4 .3; .2 .2 .3]
+A7 = [0 1 1; 1 0 1; 1 1 0]
 spA1 = spzeros(4, 2)
 spA1[1,1] = 1; spA1[1,2] = 2; spA1[2,1] = 2; spA1[2,2] = 1
 spA2 = spzeros(2, 4)
@@ -19,8 +20,6 @@ spFull_3[1,2] = 1; spFull_3[1,3] = 1; spFull_3[2,1] = 1; spFull_3[2,3] = 1; spFu
 
 spA5 = spzeros(3,3)
 spA5[1,2] = 1.0; spA5[2,1] = 1.0
-spA6 = spzeros(2,2)
-spA6[1,2] = 1.0; spA6[2,1] = 1.0
 a1 = [1, 2, 3, 2, 1]
 a2 = [1, 1, 1, 2, 3, 3, 2, 4, 4, 3]
 k1 = [2/5, 2/5, 1/5]
@@ -66,21 +65,19 @@ end
 @testset "barabasialbert" begin
     @test FinNetValu.barabasialbert(3, 2) != false
     @test_throws ArgumentError FinNetValu.barabasialbert(2, 3)
-    @test_throws ArgumentError FinNetValu.barabasialbert(2, 0)
-    @test FinNetValu.barabasialbert(2, 1) == spA6
+    @test_throws ArgumentError FinNetValu.barabasialbert(2, 1)
+    @test FinNetValu.barabasialbert(3, 2) == spFull_3
 end
 
-@testset "m0graph" begin
-    @test FinNetValu.m0graph(3, 2) != false
-    @test FinNetValu.m0graph(3, 2) == spA5
-    @test FinNetValu.m0graph(3, 1) == spzeros(3,3)
-    @test_throws ArgumentError FinNetValu.m0graph(3, 0)
-    @test_throws ArgumentError FinNetValu.m0graph(3, 3)
+@testset "initm0graph" begin
+    @test FinNetValu.initm0graph(3, 2) != false
+    @test FinNetValu.initm0graph(3, 2) == spA5
+    @test_throws ArgumentError FinNetValu.initm0graph(3, 1)
+    @test_throws ArgumentError FinNetValu.initm0graph(3, 3)
 end
 
 @testset "attachmentweights" begin
     @test FinNetValu.attachmentweights(a1) != false
     @test FinNetValu.attachmentweights(a1) == k1
     @test FinNetValu.attachmentweights(a2) == k2
-    @test FinNetValu.attachmentweights([]) == [1]
 end
