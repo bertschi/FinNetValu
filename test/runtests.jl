@@ -10,3 +10,8 @@ end
     include("./utils/test_utils.jl")
     include("./utils/test_nets.jl")
 end
+
+@testset "pricing" begin
+    include("./pricing/test_mc.jl")
+    include("./pricing/test_bs.jl")
+end

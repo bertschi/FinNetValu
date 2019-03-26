@@ -27,7 +27,7 @@ Compute log normal asset prices at maturity `τ` by transforming
 standard normal variates `Z` assuming an initial price `a₀` and
 Black-Scholes parameters `θ`.
 """
-function Aτ(a₀, θ::BlackScholesParams, Z)
+function Aτ(a₀, θ::BlackScholesParams, Z::AbstractVector)
     @unpack r, τ, σ, Lᵨ = θ
     LZ = Lᵨ * Z
     @. a₀ * exp( (r - 0.5 * σ^2) * τ + sqrt(τ) * σ * LZ )
