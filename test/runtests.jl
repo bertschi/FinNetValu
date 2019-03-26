@@ -15,3 +15,7 @@ end
     include("./pricing/test_mc.jl")
     include("./pricing/test_bs.jl")
 end
+
+@testset "models" begin
+    include("./models/test_xos.jl")
+end
