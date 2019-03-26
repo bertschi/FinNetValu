@@ -1,4 +1,5 @@
 using ForwardDiff
+using LinearAlgebra
 
 @testset "xos" begin
     net = FinNetValu.XOSModel([0.0 0.2 0.3 0.1;
@@ -9,7 +10,7 @@ using ForwardDiff
                                0.0 0.0 0.0 0.1;
                                0.1 0.0 0.0 0.1;
                                0.0 0.1 0.0 0.0],
-                              I,
+                              LinearAlgebra.I,
                               [0.8, 0.8, 0.8, 0.8])
     a = [2.0, 0.5, 0.6, 0.6]
     x = FinNetValu.fixvalue(net, a)
