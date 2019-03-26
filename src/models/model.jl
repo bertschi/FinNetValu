@@ -56,10 +56,10 @@ end
 Solve for self-consistent fixed point value of model `net` for
 external asset values `a`. `kwargs` are passed on to solver.
 """
-function fixvalue(net::FinancialModel, a; kwargs...)
+function fixvalue(net::FinancialModel, a; m = 0, kwargs...)
     sol = fixedpoint(valuefunc(net, a),
                      init(net, a);
-                     kwargs...)
+                     m = m, kwargs...)
     sol.zero
 end
 
