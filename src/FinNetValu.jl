@@ -23,6 +23,7 @@ export MonteCarloSampler, sample, expectation
 # Functional utils
 export constantly, calm
 # Network utils
-export erdosrenyi, rescale
+export erdosrenyi, rescale, barabasialbert
+
 
 end # module
