@@ -1,6 +1,7 @@
-chain = [FinNetValu.Sample(1), FinNetValu.Sample(2), FinNetValu.Sample(3)]
+using Distributions
 
 @testset "statistics" begin
+    chain = [FinNetValu.Sample(1), FinNetValu.Sample(2), FinNetValu.Sample(3)]
     @test FinNetValu.expectation(identity, chain) == 2
     @test FinNetValu.expectation(x -> x^2, chain) == (1 + 4 + 9) / 3
 end
