@@ -6,11 +6,16 @@ using Distributions
     @test FinNetValu.expectation(x -> x^2, chain) == (1 + 4 + 9) / 3
 end
 
+function hit99(estimate, mu, sigma, N)
+    z99 = 2.576
+    (mu -  z99 * sigma / sqrt(N)) < estimate < (mu + z99 * sigma / sqrt(N))
+end
+
 @testset "sampling" begin
     ## Note: Test should pass with 99% probability
     N = 1000
     mu = 1.0
     sigma = 1.0
-    z99 = 2.576
-    @test (mu -  z99 * sigma / sqrt(N)) < FinNetValu.expectation(x -> x, FinNetValu.MonteCarloSampler(Distributions.Normal(mu, sigma)), N) < (mu + z99 * sigma / sqrt(N))
+    @test hit99(FinNetValu.expectation(x -> x, FinNetValu.MonteCarloSampler(Distributions.Normal(mu, sigma)), N), mu, sigma, N)
+    @test hit99(FinNetValu.expectation(x -> x, FinNetValu.sample(FinNetValu.MonteCarloSampler(Distributions.Normal(mu, sigma)), N)), mu, sigma, N)
 end

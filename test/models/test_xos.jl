@@ -13,15 +13,21 @@ using LinearAlgebra
                               LinearAlgebra.I,
                               [0.8, 0.8, 0.8, 0.8])
     a = [2.0, 0.5, 0.6, 0.6]
-    x = FinNetValu.fixvalue(net, a)
     N = 4
     @test FinNetValu.numfirms(net) == N
+
+    @test FinNetValu.valuation(net, zeros(2*N), a) == [1.2, 0., 0., 0., 0.8, 0.5, 0.6, 0.6]
+    
+    x = FinNetValu.fixvalue(net, a)
     @test length(x) == 2*N
     @test all(FinNetValu.solvent(net, x))
     @test FinNetValu.debtview(net, x) == net.d
     @test x == vcat(FinNetValu.equityview(net, x),
                     FinNetValu.debtview(net, x))
 
-    @test size(FinNetValu.fixjacobian(net, a)) == (2*N, N)
-    @test ForwardDiff.jacobian(a -> FinNetValu.fixvalue(net, a), a) ≈ FinNetValu.fixjacobian(net, a)
+    J = FinNetValu.fixjacobian(net, a)
+    @test size(J) == (2*N, N)
+    @test ForwardDiff.jacobian(a -> FinNetValu.fixvalue(net, a), a) ≈ J
+    @test J == vcat(FinNetValu.equityview(net, J),
+                    FinNetValu.debtview(net, J))
 end
