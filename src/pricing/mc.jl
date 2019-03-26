@@ -10,7 +10,7 @@ Base type for Monte-Carlo samplers.
 abstract type AbstractSampler end
 
 """
-Samples holds `val` with `weight`. 
+Samples holds `val` with `weight`.
 """
 struct Sample{T}
     val::T
@@ -24,7 +24,7 @@ end
 Chain{T} = Vector{Sample{T}} where T
 
 """
-    sample(sampler, N)
+    samplesampler(sampler, N)
 
 Draw `N` samples using the supplied `sampler`.
 """
