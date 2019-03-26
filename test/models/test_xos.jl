@@ -27,7 +27,7 @@ using LinearAlgebra
 
     J = FinNetValu.fixjacobian(net, a)
     @test size(J) == (2*N, N)
-    @test ForwardDiff.jacobian(a -> FinNetValu.fixvalue(net, a), a) ≈ J
+    @test isapprox(J, ForwardDiff.jacobian(a -> FinNetValu.fixvalue(net, a; xtol = 1e-8), a); rtol = 1e-4)
     @test J == vcat(FinNetValu.equityview(net, J),
                     FinNetValu.debtview(net, J))
 end
