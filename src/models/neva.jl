@@ -108,8 +108,9 @@ Noe.
 function EisenbergNoeModel(Lᵉ::AbstractVector, L::AbstractMatrix)
     pbar = vec(sum(L; dims = 2))
     function val(net, e, a)
+        funEN(e, pbar) = if (e > 0) 1. else max((e + pbar) / pbar, 0.) end
         # Note: rowvector gets broadcasted correctly as 𝕍(Eⱼ)
-        transpose(@. (e >= 0) + max(e + pbar, 0) / pbar * (e < 0))
+        transpose(funEN.(e, pbar))
     end
     NEVAModel("Eisenberg & Noe",
               Lᵉ,
@@ -120,7 +121,10 @@ end
 
 function FurfineModel(Lᵉ::AbstractVector, L::AbstractMatrix, R::Real)
     @assert 0 <= R <= 1
-    val(net, e, a) = transpose(@. (e >= 0) + R * (e < 0))
+    function val(net, e, a)
+        funF(e) = if (e > 0) 1. else R end
+        transpose(funF.(e))
+    end
     NEVAModel("Furfine",
               Lᵉ,
               L,
@@ -130,7 +134,8 @@ end
 
 function LinearDebtRankModel(Lᵉ::AbstractVector, L::AbstractMatrix)
     function val(net, e, a)
-        transpose(max.(e, 0) ./ bookequity(net, a))
+        funLR(e, ebook) = if (e > ebook) 1. elseif (e > 0) e / ebook else 0. end
+        transpose(funLR.(e, bookequity(net, a)))
     end
     NEVAModel("Linear Debt Rank",
               Lᵉ,
