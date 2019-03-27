@@ -10,7 +10,7 @@ os:
     - osx
 
 after_success:
-    - julia -e 'if VERSION >= v"0.7.0-DEV.5183"; using Pkg; end; using ArgParse; Pkg.add("Coverage"); using Coverage; get(ENV,"TRAVIS_OS_NAME","")=="linux" && get(ENV,"TRAVIS_JULIA_VERSION","")=="0.7" && Codecov.submit(Codecov.process_folder())'
+    - julia -e 'if VERSION >= v"0.7.0-DEV.5183"; using Pkg; end; using ArgParse; Pkg.add("Coverage"); using Coverage; get(ENV,"TRAVIS_OS_NAME","")=="linux" && get(ENV,"TRAVIS_JULIA_VERSION","")=="1.0" && Codecov.submit(Codecov.process_folder())'
 #    - julia -e 'cd(Pkg.dir("FinNetValu")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
 #coveralls: true
 codecov: true
