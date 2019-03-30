@@ -72,7 +72,7 @@ function demo(fun, N, n)
     dVdL
 end
 
-function optidemo(fun, iterations; maximize = true)
+function optidemo(fun, iterations; maximize = true, λ₁ = 1e-6)
     ## 8 large and 16 small banks
     dᵉ = vcat(fill(10., 8), fill(1., 16))
     N = length(dᵉ)
@@ -80,21 +80,34 @@ function optidemo(fun, iterations; maximize = true)
     θ = BlackScholesParams(0.0, 1.0, 0.25)
     
     ## Optimize fun via stochastic gradient
-    unL = rand(Uniform(-2., -1.), N, N)
+    unL = rand(Normal(-2., 1.), N * (N - 1))
+    function makeL(unL)
+        idx = 0
+        L = Matrix{eltype(unL)}(undef, N, N)
+        for i = 1:N
+            for j = 1:N
+                if i != j
+                    L[i,j] = softplus(unL[idx += 1])
+                else
+                    L[i,j] = zero(eltype(unL))
+                end
+            end
+        end
+        L
+    end
     
-    opt = ADAM(1e-2)
-    ## opt = RMSProp(1e-2)
+    ## opt = ADAM(1e-2)
+    opt = RMSProp(1e-1)
     for i = 1:iterations
         if (i - 1) % 25 == 0
             println(string("Step ", i - 1, ":"))
-            println(loss(fun, createXOS(softplus.(unL), dᵉ), a₀, θ, 250))
+            println(loss(fun, createXOS(makeL(unL), dᵉ), a₀, θ, 2500))
         end
-        dVdunL = reshape(ForwardDiff.gradient(unL -> ifelse(maximize, -1., 1.) * loss(fun, createXOS(softplus.(unL), dᵉ), a₀, θ, 10),
-                                              unL),
-                         N, N)
+        dVdunL = ForwardDiff.gradient(unL -> ifelse(maximize, -1., 1.) * loss(fun, createXOS(makeL(unL), dᵉ), a₀, θ, 10) + λ₁ * sum(softplus.(unL)),
+                                      unL)
         Flux.Tracker.update!(opt, unL, dVdunL)
     end
-    softplus.(unL)
+    makeL(unL)
 end
 
 function bfgsdemo(fun; maximize = true)
@@ -111,4 +124,66 @@ function bfgsdemo(fun; maximize = true)
                    Optim.Options(show_trace = true,
                                  show_every = 1))
     softplus.(opt.minimizer)
+end
+
+## Here, we numerically test our gradient calculations (see XOS/grads.tex)
+δ(i, j) = i == j
+
+function compgradL(L, dᵉ, a)
+    net = createXOS(L, dᵉ)
+    x = fixvalue(net, a)
+    r = debtview(net, x)
+    ξ = solvent(net, x)
+    
+    N = numfirms(net)
+    dgdr = Matrix{Float64}(undef, N, N)
+    for i = 1:N
+        for k = 1:N
+            if ξ[i]
+                dgdr[i,k] = 0.
+            else
+                dgdr[i,k] = net.Mᵈ[i,k]
+            end
+        end
+    end
+    W = (I - dgdr) \ I
+    drdL = Array{Float64,3}(undef, (N, N, N))
+    for i = 1:N
+        for k = 1:N
+            for l = 1:N
+                drdL[i,k,l] = W[i,k] * ξ[k] + r[k] / net.d[k] * (W[i,l] * (1. - ξ[l]) - sum(W[i,:] .* (1. .- ξ) .* net.Mᵈ[:,k]))
+            end
+        end
+    end
+
+    ## Compare with direct attempt
+    drdL_AD = reshape(ForwardDiff.jacobian(L -> debtview(net, fixvalue(createXOS(L, dᵉ), a)), L),
+                      N, N, N)
+    ## and the formula by Demange
+    dVdL_Dema = Array{Float64,2}(undef, (N, N))
+    for k = 1:N
+        for l = 1:N
+            dVdL_Dema[k,l] = r[k] / net.d[k] * ( 1. - sum(W[:,k]) * (1 - ξ[k]) + sum(W[:,l]) * (1 - ξ[l]) ) 
+        end
+    end
+    drdL, drdL_AD, dVdL_Dema
+end
+
+function testgrad(N)
+    L = rand(Uniform(0.5, 1.5), N, N)
+    dᵉ = rand(Uniform(0., 1.), N)
+    a = rand(Uniform(0.5, 1.), N)
+
+    drdL, drdL_AD, dVdL_Dema = compgradL(L, dᵉ, a)
+    println("Jacobian matrices:")
+    println(drdL)
+    println(drdL_AD)
+    
+    println("Value gradients:")
+    println(reshape(sum(drdL; dims = 1), N, N))
+    println(reshape(sum(drdL_AD; dims = 1), N, N))
+    println(dVdL_Dema)
+    @assert reshape(sum(drdL; dims = 1), N, N) ≈ dVdL_Dema
+    
+    drdL, drdL_AD, dVdL_Dema
 end
