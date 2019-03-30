@@ -187,3 +187,58 @@ function testgrad(N)
     
     drdL, drdL_AD, dVdL_Dema
 end
+
+function gradADfull(N)
+    Mˢ = rescale(rand(Uniform(0., 1.), N, N),
+                 rand(Uniform(0.2, 0.6), N))
+    L = rand(Uniform(0., 1.), N, N)
+    dᵉ = rand(Uniform(0., 1.), N)
+    a = rand(Uniform(0.5, 1.), N)
+
+    function net(L)
+        d = vec(sum(L; dims = 2)) .+ dᵉ
+        Mᵈ = (L ./ d)'
+        XOSModel(Mˢ, Mᵈ, I, d)
+    end
+
+    ## Compute drdL via AD
+    reshape(ForwardDiff.jacobian(L -> debtview(net(L), fixvalue(net(L), a)), L),
+            N, N, N)
+end
+
+function testgradC(N)
+    ## Test gradient calculations for insurance cost
+    L = rand(Uniform(0.5, 1.5), N, N)
+    dᵉ = rand(Uniform(0., 1.), N)
+    a = rand(Uniform(0.5, 1.), N)
+
+    net = createXOS(L, dᵉ)
+    x = fixvalue(net, a)
+    r = debtview(net, x)
+    ξ = solvent(net, x)
+    
+    N = numfirms(net)
+    dgdr = Matrix{Float64}(undef, N, N)
+    for i = 1:N
+        for k = 1:N
+            if ξ[i]
+                dgdr[i,k] = 0.
+            else
+                dgdr[i,k] = net.Mᵈ[i,k]
+            end
+        end
+    end
+    W = (I - dgdr) \ I
+    dCdL = Matrix{Float64}(undef, N, N)
+    extfrac = (1 .- vec(sum(net.Mᵈ; dims = 1)))
+    for k = 1:N
+        for l = 1:N
+            dCdL[k,l] = r[k] / net.d[k] * sum(extfrac .* (W[:, k] .* (1. - ξ[k]) .- W[:, l] .* (1. - ξ[l])))
+        end
+    end
+    dCdL_AD = ForwardDiff.gradient(L -> insurancecost(createXOS(L, dᵉ), a) .* sum(dᵉ),
+                                   L)
+    dCdL, dCdL_AD
+end
+    
+                                       
