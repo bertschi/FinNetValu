@@ -36,7 +36,7 @@ function insurancecost(net::XOSModel, a::AbstractVector)
     r = debtview(net, fixvalue(net, a))
     α = 1 .- vec(sum(net.Mᵈ; dims = 1)) ## Fraction of external debt
     dᵉ = α .* net.d
-    sum(dᵉ - α .* r) / sum(dᵉ)
+    sum(dᵉ .- α .* r) / sum(dᵉ)
 end
 
 """
@@ -82,12 +82,12 @@ function optidemo(fun, iterations; maximize = true)
     ## Optimize fun via stochastic gradient
     unL = rand(Uniform(-2., -1.), N, N)
     
-    opt = ADAM(1e-2)
-    ## opt = RMSProp(1e-2)
+    ## opt = ADAM(1e-2)
+    opt = RMSProp(1e-1)
     for i = 1:iterations
         if (i - 1) % 25 == 0
             println(string("Step ", i - 1, ":"))
-            println(loss(fun, createXOS(softplus.(unL), dᵉ), a₀, θ, 250))
+            println(loss(fun, createXOS(softplus.(unL), dᵉ), a₀, θ, 2500))
         end
         dVdunL = reshape(ForwardDiff.gradient(unL -> ifelse(maximize, -1., 1.) * loss(fun, createXOS(softplus.(unL), dᵉ), a₀, θ, 10),
                                               unL),
