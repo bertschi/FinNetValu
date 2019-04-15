@@ -72,9 +72,11 @@ function solvent(net::NEVAModel, x)
     x .> zero(eltype(x))
 end
 
+bookequity(net::NEVAModel, a) = a .+ rowsums(net.A) .- net.l
+
 function init(net::NEVAModel, a)
-    ## Initialize between boundaries m <= M
-    a .- net.l
+    ## Initialize at upper boundary
+    bookequity(net, a)
 end
 
 ##########################################
@@ -127,8 +129,6 @@ function FurfineModel(Lᵉ::AbstractVector, L::AbstractMatrix, R::Real)
               constantly(one(eltype(L))),
               val)
 end
-
-bookequity(net::NEVAModel, a) = a .+ rowsums(net.A) .- net.l
 
 valueLR(e::Real, ebook::Real) = if (e > ebook) 1. elseif (e > 0) e / ebook else 0. end
 
