@@ -12,3 +12,14 @@ end
     @test FinNetValu.discount(θ₁) == exp(0)
     @test FinNetValu.discount(θ₂) == exp.([0, -2])
 end
+
+@testset "Black Scholes" begin
+    r, τ, σ = 0.0, 1.0, 1.0
+    θ = FinNetValu.BlackScholesParams(r, τ, σ)
+    K = 100.
+    S₀ = 110.
+    @test FinNetValu.d₋(S₀, K, r, τ, σ) ≈ FinNetValu.d₊(S₀, K, r, τ, σ) - σ * √(τ)
+    ## Check for put-call parity
+    @test FinNetValu.callprice(S₀, K, θ) - FinNetValu.putprice(S₀, K, θ) ≈ S₀ - FinNetValu.discount(θ) * K
+    @test FinNetValu.putdualΔ(S₀, K, θ) ≈ FinNetValu.discount(θ) + FinNetValu.calldualΔ(S₀, K, θ)
+end
