@@ -241,4 +241,45 @@ function testgradC(N)
     dCdL, dCdL_AD
 end
     
-                                       
+## Try with NEVA model which allows for default costs
+function insurancecost(net::NEVAModel, a::AbstractVector)
+    e = fixvalue(net, a)
+    ## Valuation adjustment
+    v = vec(net.𝕍(net, e, a))
+    ## leads to insurance cost
+    dᵉ = net.l .- vec(sum(net.A'; dims = 2))
+    sum((1. .- v) .* dᵉ) / sum(dᵉ)
+end
+
+function optineva(lossfun; maximize = false, β = 1., σ = 1., algo = BFGS())
+    ## 8 large and 16 small banks
+    dᵉ = vcat(fill(10., 8), fill(1., 16))
+    N = length(dᵉ)
+    a₀ = dᵉ * 1.1
+    θ = BlackScholesParams(0.0, 1.0, σ)
+    
+    ## Optimize fun via BFGS
+    L = zeros(N, N)
+    function makeL(unL)
+        idx = 0
+        for i = 1:N
+            for j = 1:N
+                if i != j
+                    L[i,j] = exp(unL[idx += 1])
+                end
+            end
+        end
+        L
+    end
+    opt = optimize(unL -> ifelse(maximize, -1., 1.) * lossfun(ExAnteEN_BS_Model(dᵉ, makeL(unL), β, θ), a₀),
+                   rand(Normal(-2., 1), N*(N-1)),
+                   algo,
+                   Optim.Options(show_trace = true,
+                                 show_every = 1,
+                                 iterations = 100))
+    println(opt)
+    makeL(opt.minimizer)
+end
+
+# Try this ...
+# L = optineva(insurancecost; σ = 0.25, β = 0.7, algo = ConjugateGradient())
