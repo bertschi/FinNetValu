@@ -50,7 +50,7 @@ end
 Computes the d₊ value from the Black-Scholes formula.
 """
 function d₊(S₀, K, r, τ, σ)
-    @. (log(S₀) - log(K) + (r + σ^2 / 2) / τ) / (σ * √(τ))
+    @. (log(S₀) - log(K) + (r + σ^2 / 2) * τ) / (σ * √(τ))
 end
 
 """
@@ -59,7 +59,7 @@ end
 Computes the d₋ value from the Black-Scholes formula.
 """
 function d₋(S₀, K, r, τ, σ)
-    @. (log(S₀) - log(K) + (r - σ^2 / 2) / τ) / (σ * √(τ))
+    @. (log(S₀) - log(K) + (r - σ^2 / 2) * τ) / (σ * √(τ))
 end
 
 function Φ(x)
