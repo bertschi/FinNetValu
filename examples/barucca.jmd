@@ -1,0 +1,180 @@
+
+```julia
+using Pkg
+Pkg.activate("/home/bertschi/GitRepos/FinNetValu/")
+```
+
+```julia
+using FinNetValu
+using Distributions
+using LinearAlgebra
+using SparseArrays
+using ForwardDiff
+using Plots
+using DataFrames
+```
+
+## Examples from Barucca et al. (2016)
+
+Here we replicate some figures from the paper
+
+Paolo Barucca, Marco Bardoscia, Fabio Caccioli, Marco D’Errico, Gabriele Visentin, Stefano Battiston and Guido Caldarelli, *Network Valuation in Financial Systems*, arXiv:1606.05164v2, 2016.
+
+First, we redefine the LinearDebtRankModel such that the bookequity is externally given ... hoping that this allows to replicate the figures from the paper.
+
+```julia
+function LinearDebtRankModel(Lᵉ::AbstractVector, L::AbstractMatrix, bookequity::AbstractVector)
+    function val(net, e, a)
+        transpose(FinNetValu.valueLR.(e, bookequity))
+    end
+    NEVAModel("Linear Debt Rank",
+              Lᵉ,
+              L,
+              constantly(one(eltype(L))),
+              val)
+end
+```
+
+To reproduce figure 1, we use the simplest possible setup. I.e. we define the corresponding models with a single firm and run their valuations functions across a range of equities.
+
+```julia
+EN = EisenbergNoeModel([0.0], 2 .* ones(1,1))
+Furfine = FurfineModel([0.0], 2 .* ones(1,1), 0)
+LinearDR = LinearDebtRankModel([0.0], 2 * ones(1,1), [2.5])
+ExAnteEN = ExAnteEN_BS_Model([0.0], 2 .* ones(1,1), 1.0, BlackScholesParams(0.0, 1.0, 0.1))
+```
+
+```julia
+equities = range(-3, length = 251, stop = 3)
+𝕍_EN = [EN.𝕍(EN, e, nothing)[1] for e in equities]
+𝕍_Furfine = [Furfine.𝕍(Furfine, e, nothing)[1] for e in equities]
+𝕍_LinearDR = [LinearDR.𝕍(LinearDR, e, [0.0])[1] for e in equities] # Note: A should be ignored here!
+𝕍_ExAnteEN = [ExAnteEN.𝕍(ExAnteEN, e, [0.0])[1] for e in equities]
+
+plt = plot(equities, 𝕍_EN, label = "EN",
+           xlabel = "equity of the borrower", ylabel = "interbank valuation function")
+plot!(plt, equities, 𝕍_Furfine, label = "Furfine")
+plot!(plt, equities, 𝕍_LinearDR, label = "Linear DR")
+plot!(plt, equities, 𝕍_ExAnteEN, label = "Ex-ante EN")
+```
+
+Note that the valuation formula $\mathbb{V}_{ij} = \frac{E_j^+}{M_j}$ for the linear debt rank model is actually not correct in the paper as it can exceed one. In practice, this should not be a problem as a firms equity value $E_j$ never exceeds its book equity $M_j$. Here, values are clipped between 0 and 1 as in the accompanying code at https://github.com/marcobardoscia/neva
+
+Next, we replicate the left panel of figure 2.
+
+```julia
+# External liabilities
+Lᵉ = [9., 4., 2.]
+# Cross-holding matrix
+A = [0 0.5 0;
+     0 0 0.5;
+     0.5 0 0]
+# External asset values
+Aᵉ = [10., 5., 3.]
+
+models = [EisenbergNoeModel(Lᵉ, A'),
+          FurfineModel(Lᵉ, A', 0.0),
+          LinearDebtRankModel(Lᵉ, A', fill(1., 3)),
+          ExAnteEN_BS_Model(Lᵉ, A', 1.0, BlackScholesParams(0.0, 1.0, 0.1))]
+```
+
+Each model is then shocked by decreasing the external asset value by a factor $\alpha$ and compute the impact on the equity value as in the paper, i.e.
+$$
+    \frac{\sum_i {\Delta}E_i - {\Delta}A^e_i}{\sum_{ij} A_{ij}}
+$$
+where ${\Delta}A^e = \alpha A^e$.
+
+```julia
+function runshock(model, Aᵉ, α)
+    E₀ = fixvalue(model, Aᵉ)
+    ΔAᵉ = α .* Aᵉ
+    ΔE  = E₀ .- fixvalue(model, Aᵉ .- ΔAᵉ)
+    sum(ΔE .- ΔAᵉ) / sum(model.A)
+end
+```
+
+```julia
+αs = range(0, length = 101, stop = 0.6)
+shocks = collect(runshock(model, Aᵉ, α)
+                 for α in αs,
+                     model in models);
+```
+
+```julia
+plot(αs, shocks, label = ["EN", "Furfine", "Linear DR", "NEVA"],
+     xlabel = "shock", ylabel = "network contribution (relative to max)")
+```
+
+Now, the linear debt rank model looks right (we should refactor the models though to correctly implement this model within the library), but the ex-ante version of the model appears shifted. In order to investigate this issue in more detail, we reproduce some other figures using that model.
+
+We start with the right panel of figure 2 which compares the valuation adjustment for the book equity with the corresponding one taking into account network effects:
+
+```julia
+modelNEVA = FinNetValu.ExAnteEN_BS_Model(Lᵉ, A', 1.0, BlackScholesParams(0.0, 1.0, 0.1))
+
+αs = range(0, length = 101, stop = 0.6)
+df = DataFrame(α = Vector{Float64}(),
+               bankA = Vector{Float64}(),
+               bankB = Vector{Float64}(),
+               bankC = Vector{Float64}())
+for α in αs
+    a = (1 - α) .* Aᵉ
+    m = bookequity(modelNEVA, a)
+    e = fixvalue(modelNEVA, a)
+    val = modelNEVA.𝕍(modelNEVA, m, a) .- modelNEVA.𝕍(modelNEVA, e, a)
+    push!(df, vcat(α, val'))
+end
+```
+
+```julia
+plot(df.α, df.bankA)
+```
+
+```julia
+plot(df.α, df.bankB)
+```
+
+```julia
+plot(df.α, df.bankC)
+```
+
+Finally, we replicate all figures from the appendix.
+
+```julia
+function fig_limit(Aᵉ, A)
+    Lᵉ = fill(0.0, 3)
+    modelEN = FinNetValu.EisenbergNoeModel(Lᵉ, A')
+    println(fixvalue(modelEN, Aᵉ))
+
+    τs = 10 .^ (-1:0.05:1)
+    df = DataFrame(τ = Vector{Float64}(),
+               bankA = Vector{Float64}(),
+               bankB = Vector{Float64}(),
+               bankC = Vector{Float64}())
+    
+    for τ in τs
+        modelExAnteEN = FinNetValu.ExAnteEN_BS_Model(Lᵉ, A',
+                                                     1.0,
+                                                     BlackScholesParams(0.0, τ, 10.))
+        e = fixvalue(modelExAnteEN, Aᵉ)
+        push!(df, vcat(τ, e))
+    end
+    df
+end
+```
+
+```julia
+df_fig3 = fig_limit([1, 1, 1], [0 1.2 0; 0 0 1.2; 0 0 0])
+
+plot(log.(df_fig3.τ), df_fig3.bankA)
+```
+
+```julia
+plot(log.(df_fig3.τ), df_fig3.bankB)
+```
+
+```julia
+plot(log.(df_fig3.τ), df_fig3.bankC)
+```
+
+    
