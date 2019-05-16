@@ -1,7 +1,7 @@
 
 ```julia
 using Pkg
-Pkg.activate("/home/bertschi/GitRepos/FinNetValu/")
+Pkg.activate(joinpath(homedir(), "GitRepos/FinNetValu/"))
 ```
 
 ```julia
@@ -41,15 +41,15 @@ To reproduce figure 1, we use the simplest possible setup. I.e. we define the co
 EN = EisenbergNoeModel([0.0], 2 .* ones(1,1))
 Furfine = FurfineModel([0.0], 2 .* ones(1,1), 0)
 LinearDR = LinearDebtRankModel([0.0], 2 * ones(1,1), [2.5])
-ExAnteEN = ExAnteEN_BS_Model([0.0], 2 .* ones(1,1), 1.0, BlackScholesParams(0.0, 1.0, 0.1))
+ExAnteEN = ExAnteEN_BS_Model([0.0], 2 .* ones(1,1), 1.0, BlackScholesParams(0.0, 1.0, 1.0))
 ```
 
 ```julia
 equities = range(-3, length = 251, stop = 3)
 𝕍_EN = [EN.𝕍(EN, e, nothing)[1] for e in equities]
 𝕍_Furfine = [Furfine.𝕍(Furfine, e, nothing)[1] for e in equities]
-𝕍_LinearDR = [LinearDR.𝕍(LinearDR, e, [0.0])[1] for e in equities] # Note: A should be ignored here!
-𝕍_ExAnteEN = [ExAnteEN.𝕍(ExAnteEN, e, [0.0])[1] for e in equities]
+𝕍_LinearDR = [LinearDR.𝕍(LinearDR, e, nothing)[1] for e in equities]
+𝕍_ExAnteEN = [ExAnteEN.𝕍(ExAnteEN, e, [1.0])[1] for e in equities]
 
 plt = plot(equities, 𝕍_EN, label = "EN",
            xlabel = "equity of the borrower", ylabel = "interbank valuation function")
@@ -146,7 +146,7 @@ function fig_limit(Aᵉ, A)
     modelEN = FinNetValu.EisenbergNoeModel(Lᵉ, A')
     println(fixvalue(modelEN, Aᵉ))
 
-    τs = 10 .^ (-1:0.05:1)
+    τs = 10 .^ (-2:0.05:2)
     df = DataFrame(τ = Vector{Float64}(),
                bankA = Vector{Float64}(),
                bankB = Vector{Float64}(),
@@ -155,7 +155,7 @@ function fig_limit(Aᵉ, A)
     for τ in τs
         modelExAnteEN = FinNetValu.ExAnteEN_BS_Model(Lᵉ, A',
                                                      1.0,
-                                                     BlackScholesParams(0.0, τ, 10.))
+                                                     BlackScholesParams(0.0, τ, 1.0))
         e = fixvalue(modelExAnteEN, Aᵉ)
         push!(df, vcat(τ, e))
     end
@@ -166,15 +166,43 @@ end
 ```julia
 df_fig3 = fig_limit([1, 1, 1], [0 1.2 0; 0 0 1.2; 0 0 0])
 
-plot(log.(df_fig3.τ), df_fig3.bankA)
+plot(log10.(df_fig3.τ), df_fig3.bankA)
 ```
 
 ```julia
-plot(log.(df_fig3.τ), df_fig3.bankB)
+plot(log10.(df_fig3.τ), df_fig3.bankB)
 ```
 
 ```julia
-plot(log.(df_fig3.τ), df_fig3.bankC)
+plot(log10.(df_fig3.τ), df_fig3.bankC)
+```
+
+```julia
+df_fig4 = fig_limit([1, 0.1, 1], [0 1 1; 0 0 0; 0 0 0])
+
+plot(log10.(df_fig4.τ), df_fig4.bankA)
+```
+
+```julia
+plot(log10.(df_fig4.τ), df_fig4.bankB)
+```
+
+```julia
+plot(log10.(df_fig4.τ), df_fig4.bankC)
+```
+
+```julia
+df_fig5 = fig_limit([1, 1, 1], [0 1.1 0; 0 0 1.2; 1.5 0 0])
+
+plot(log10.(df_fig5.τ), df_fig5.bankA)
+```
+
+```julia
+plot(log10.(df_fig5.τ), df_fig5.bankB)
+```
+
+```julia
+plot(log10.(df_fig5.τ), df_fig5.bankC)
 ```
 
     
