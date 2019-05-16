@@ -41,14 +41,14 @@ To reproduce figure 1, we use the simplest possible setup. I.e. we define the co
 EN = EisenbergNoeModel([0.0], 2 .* ones(1,1))
 Furfine = FurfineModel([0.0], 2 .* ones(1,1), 0)
 LinearDR = LinearDebtRankModel([0.0], 2 * ones(1,1), [2.5])
-ExAnteEN = ExAnteEN_BS_Model([0.0], 2 .* ones(1,1), 1.0, BlackScholesParams(0.0, 1.0, 0.1))
+ExAnteEN = ExAnteEN_BS_Model([0.0], 2 .* ones(1,1), 1.0, BlackScholesParams(0.0, 1.0, 1.0))
 ```
 
 ```julia
 equities = range(-3, length = 251, stop = 3)
 𝕍_EN = [EN.𝕍(EN, e, nothing)[1] for e in equities]
 𝕍_Furfine = [Furfine.𝕍(Furfine, e, nothing)[1] for e in equities]
-𝕍_LinearDR = [LinearDR.𝕍(LinearDR, e, [0.0])[1] for e in equities] # Note: A should be ignored here!
+𝕍_LinearDR = [LinearDR.𝕍(LinearDR, e, nothing)[1] for e in equities]
 𝕍_ExAnteEN = [ExAnteEN.𝕍(ExAnteEN, e, [0.0])[1] for e in equities]
 
 plt = plot(equities, 𝕍_EN, label = "EN",
