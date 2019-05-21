@@ -14,21 +14,22 @@ struct NEVAModel <: FinancialModel
     l
     𝕍ᵉ
     𝕍
-
+    E₀
+    
     """
         NEVAModel(N, Lᵉ, L, 𝕍ᵉ, 𝕍)
 
     Construct NEVA model with `N` firms, external `Lᵉ` and internal
     liabilities `L`. Values of external assets and liabilities of
     counterparties are adjusted by the valuation functions `𝕍ᵉ` and
-    `𝕍` respectively."""
+    `𝕍` respectively. The initial equity is computed via `E₀`."""
 
-    function NEVAModel(name::String, N::Integer, Lᵉ, L, 𝕍ᵉ::Function, 𝕍::Function)
+    function NEVAModel(name::String, N::Integer, Lᵉ, L, 𝕍ᵉ::Function, 𝕍::Function, E₀::Function)
         @assert all(Lᵉ .>= 0)
         @assert all(L .>= 0)
         A = copy(L')
         l = rowsums(L) .+ Lᵉ
-        new(name, N, A, l, 𝕍ᵉ, 𝕍)
+        new(name, N, A, l, 𝕍ᵉ, 𝕍, E₀)
     end
 end
 
@@ -40,18 +41,18 @@ end
 # Convenience constructors #
 ############################
 
-function NEVAModel(name::String, Lᵉ::AbstractVector, L, 𝕍ᵉ::Function, 𝕍::Function)
-    NEVAModel(name, length(Lᵉ), Lᵉ, L, 𝕍ᵉ, 𝕍)
+function NEVAModel(name::String, Lᵉ::AbstractVector, L, 𝕍ᵉ::Function, 𝕍::Function, E₀::Function)
+    NEVAModel(name, length(Lᵉ), Lᵉ, L, 𝕍ᵉ, 𝕍, E₀)
 end
 
-function NEVAModel(name::String, Lᵉ, L::AbstractMatrix, 𝕍ᵉ::Function, 𝕍::Function)
+function NEVAModel(name::String, Lᵉ, L::AbstractMatrix, 𝕍ᵉ::Function, 𝕍::Function, E₀::Function)
     @assert size(L, 1) == size(L, 2)
-    NEVAModel(name, size(L, 1), Lᵉ, L, 𝕍ᵉ, 𝕍)
+    NEVAModel(name, size(L, 1), Lᵉ, L, 𝕍ᵉ, 𝕍, E₀)
 end
 
-function NEVAModel(name::String, Lᵉ::AbstractVector, L::AbstractMatrix, 𝕍ᵉ::Function, 𝕍::Function)
+function NEVAModel(name::String, Lᵉ::AbstractVector, L::AbstractMatrix, 𝕍ᵉ::Function, 𝕍::Function, E₀::Function)
     @assert length(Lᵉ) == size(L, 1) == size(L, 2)
-    NEVAModel(name, length(Lᵉ), Lᵉ, L, 𝕍ᵉ, 𝕍)
+    NEVAModel(name, length(Lᵉ), Lᵉ, L, 𝕍ᵉ, 𝕍, E₀)
 end
 
 ##############################################
@@ -75,8 +76,7 @@ end
 bookequity(net::NEVAModel, a) = a .+ rowsums(net.A) .- net.l
 
 function init(net::NEVAModel, a)
-    ## Initialize at upper boundary
-    bookequity(net, a)
+    net.E₀(net, a)
 end
 
 ##########################################
@@ -100,8 +100,7 @@ Creates an instance of the NEVAModel with valuation functions
 
 where ``\\bar{p}_j = \\sum_k L_{jk}``.
 
-This valuation was shown to correspond to the model by Eisenberg &
-Noe.
+This valuation was shown to correspond to the model by Eisenberg & Noe.
 """
 function EisenbergNoeModel(Lᵉ::AbstractVector, L::AbstractMatrix)
     pbar = vec(sum(L; dims = 2))
@@ -113,11 +112,27 @@ function EisenbergNoeModel(Lᵉ::AbstractVector, L::AbstractMatrix)
               Lᵉ,
               L,
               constantly(one(eltype(L))),
-              val)
+              val,
+              bookequity)
 end
 
 valueFurfine(e::Real, R::Real) = if (e > 0) 1. else R end
 
+"""
+    FurfineModel(Lᵉ, L, R)
+
+Creates an instance of the NEVAModel with valuation functions
+
+```math
+\\begin{align}
+\\mathbb{V}^e_i(E_i) &= 1 \\quad \\forall i \\\\
+\\mathbb{V}_{ij}(E_j) &= \\unicode{x1D7D9}_{E_j \\geq 0} + R \\unicode{x1D7D9}_{E_j < 0} \\quad \\forall i, j
+\\end{align}
+```
+with recovery `R`.
+
+This valuation was shown to correspond to the model by Furfine.
+"""
 function FurfineModel(Lᵉ::AbstractVector, L::AbstractMatrix, R::Real)
     @assert 0 <= R <= 1
     function val(net, e, a)
@@ -127,22 +142,55 @@ function FurfineModel(Lᵉ::AbstractVector, L::AbstractMatrix, R::Real)
               Lᵉ,
               L,
               constantly(one(eltype(L))),
-              val)
+              val,
+              bookequity)
 end
 
 valueLR(e::Real, ebook::Real) = if (e > ebook) 1. elseif (e > 0) e / ebook else 0. end
 
-function LinearDebtRankModel(Lᵉ::AbstractVector, L::AbstractMatrix)
+"""
+    LinearDebtRankModel(Lᵉ, L, M)
+
+Creates an instance of the NEVAModel with valuation functions
+
+```math
+\\begin{align}
+\\mathbb{V}^e_i(E_i) &= 1 \\quad \\forall i \\\\
+\\mathbb{V}_{ij}(E_j) &= \\frac{E_j^+}{M_j} \\quad \\forall i, j
+\\end{align}
+```
+where the bookequities are externally fixed as `M`.
+
+This valuation was shown to correspond to the linear DebtRank model.
+"""
+function LinearDebtRankModel(Lᵉ::AbstractVector, L::AbstractMatrix, M::AbstractVector)
     function val(net, e, a)
-        transpose(valueLR.(e, bookequity(net, a)))
+        transpose(valueLR.(e, M))
     end
     NEVAModel("Linear Debt Rank",
               Lᵉ,
               L,
               constantly(one(eltype(L))),
-              val)
+              val,
+              constantly(M))
 end
 
+"""
+    ExAnteEN_BS_Model(Lᵉ, L, β, θ)
+
+Creates an instance of the NEVAModel with valuation functions
+
+```math
+\\begin{align}
+\\mathbb{V}^e_i(E_i) &= 1 \\quad \\forall i \\\\
+\\mathbb{V}_{ij}(E_j) &= 1 - p_j^D(E_j) + β ρ_j(E_j) \\quad \\forall i, j
+\\end{align}
+```
+where ``p_j^D(E_j)`` and ``ρ_j(E_j)`` denote the risk neutral probability
+of default and endogenous recovery respectively.
+
+This valuation can be considered as a ex-ante version of the Eisenberg & Noe model.
+"""
 function ExAnteEN_BS_Model(Lᵉ::AbstractVector, L::AbstractMatrix, β, θ::BlackScholesParams)
     pbar = vec(sum(L; dims = 2))
     function val(net, e, a)
@@ -168,5 +216,6 @@ function ExAnteEN_BS_Model(Lᵉ::AbstractVector, L::AbstractMatrix, β, θ::Blac
               Lᵉ,
               L,
               constantly(one(eltype(L))),
-              val)
+              val,
+              bookequity)
 end
