@@ -4,9 +4,12 @@ using LinearAlgebra
 """
     XOSModel(N, Mˢ, Mᵈ, Mᵉ, d)
 
-Financial network of `N` firms with investment portfolios `Mˢ`, `Mᵈ`
+Financial network of firms with investment portfolios `Mˢ`, `Mᵈ`
 and `Mᵉ` of holding fractions in counterparties equity, debt and
 external assets respectively. Nominal debt `d` is due at maturity.
+
+Note that `Mˢ`, `Mᵈ` are required to be left substochastic matrices
+and `d` must be a non-negative vector.
 """
 struct XOSModel{T1,T2,T3,U} <: FinancialModel
     N::Int64
