@@ -20,21 +20,6 @@ Here we replicate some figures from the paper
 
 Paolo Barucca, Marco Bardoscia, Fabio Caccioli, Marco D’Errico, Gabriele Visentin, Stefano Battiston and Guido Caldarelli, *Network Valuation in Financial Systems*, arXiv:1606.05164v2, 2016.
 
-First, we redefine the LinearDebtRankModel such that the bookequity is externally given ... hoping that this allows to replicate the figures from the paper.
-
-```julia
-function LinearDebtRankModel(Lᵉ::AbstractVector, L::AbstractMatrix, bookequity::AbstractVector)
-    function val(net, e, a)
-        transpose(FinNetValu.valueLR.(e, bookequity))
-    end
-    NEVAModel("Linear Debt Rank",
-              Lᵉ,
-              L,
-              constantly(one(eltype(L))),
-              val)
-end
-```
-
 To reproduce figure 1, we use the simplest possible setup. I.e. we define the corresponding models with a single firm and run their valuations functions across a range of equities.
 
 ```julia
@@ -105,7 +90,7 @@ plot(αs, shocks, label = ["EN", "Furfine", "Linear DR", "NEVA"],
      xlabel = "shock", ylabel = "network contribution (relative to max)")
 ```
 
-Now, the linear debt rank model looks right (we should refactor the models though to correctly implement this model within the library), but the ex-ante version of the model appears shifted. In order to investigate this issue in more detail, we reproduce some other figures using that model.
+The linear debt rank model with externally fixed book equity looks right, but the ex-ante version of the model appears shifted. In order to investigate this issue in more detail, we reproduce some other figures using that model.
 
 We start with the right panel of figure 2 which compares the valuation adjustment for the book equity with the corresponding one taking into account network effects:
 
@@ -205,4 +190,4 @@ plot(log10.(df_fig5.τ), df_fig5.bankB)
 plot(log10.(df_fig5.τ), df_fig5.bankC)
 ```
 
-    
+All figures appear qualitatively correct, but the scale on the maturity axis is larger! Maybe a different ``\\sigma`` might work as this is not given in the paper.
