@@ -62,21 +62,22 @@ end
 
 function ret(net, θ, a₀)
     @assert numfirms(net) == 2
-    val(a) = expectation(z -> discount(θ) .* fixvalue(net, Aτ(a, θ, z)),
-                         MonteCarloSampler(MvNormal(numfirms(net), 1.0)),
-                         25000)
-    v₀ = val(a₀)
+    ## Control variate x to reduce variance
+    val(a, x) = x .+ expectation(z -> discount(θ) .* fixvalue(net, Aτ(a, θ, z)) .- x,
+                                 MonteCarloSampler(MvNormal(numfirms(net), 1.0)),
+                                 25000)
+    v₀ = val(a₀, discount(θ) .* fixvalue(net, Aτ(a₀, θ, zero(a₀))))
     ret = []
     for α = 0:0.1:(2 * pi)
         a = a₀ .+ 0.05 .* a₀ .* [sin(α), cos(α)]
-        push!(ret, (val(a) .- v₀) ./ v₀)
+        push!(ret, (val(a, v₀) .- v₀) ./ v₀)
     end
     ret
 end
 
 function demo()
     net = XOSModel(zeros(2, 2), [0 0.6; 0.6 0], I, fill(K, 2))
-    θ = BlackScholesParams(0., 1., 0.5)
+    θ = BlackScholesParams(0., 1., 0.25)
     a₀ = [0.6, 0.9, 1.2]
     df = DataFrame(a = zeros(0),
                    s1 = zeros(0), s2 = zeros(0),
