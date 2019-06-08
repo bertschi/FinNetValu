@@ -7,6 +7,8 @@ using Parameters
 using LinearAlgebra
 using Distributions
 using ForwardDiff
+using DataFrames
+using CSV
 
 θ = BlackScholesParams(0., 2.5, 0.5)
 K = 2.
@@ -57,5 +59,37 @@ function risk2(a₀)
     retᵣ = (Δₛ[1,2] * Δₛ[2,1] - Δₛ[1,1] * Δₛ[2,2]) / denom * r[1] / s[1]
     retₛ, retᵣ
 end
+
+function ret(net, θ, a₀)
+    @assert numfirms(net) == 2
+    val(a) = expectation(z -> discount(θ) .* fixvalue(net, Aτ(a, θ, z)),
+                         MonteCarloSampler(MvNormal(numfirms(net), 1.0)),
+                         25000)
+    v₀ = val(a₀)
+    ret = []
+    for α = 0:0.1:(2 * pi)
+        a = a₀ .+ 0.05 .* [sin(α), cos(α)]
+        push!(ret, val(a) .- v₀)
+    end
+    ret
+end
+
+function demo()
+    net = XOSModel(zeros(2, 2), [0 0.6; 0.6 0], I, fill(K, 2))
+    θ = BlackScholesParams(0., 1., 0.5)
+    a₀ = [0.6, 0.9, 1.2]
+    df = DataFrame(a = zeros(0),
+                   s1 = zeros(0), s2 = zeros(0),
+                   r1 = zeros(0), r2 = zeros(0))
+    for a in a₀
+        for x in ret(net, θ, fill(a, 2))
+            push!(df, vcat(a, x))
+        end
+    end
+    df
+end
+
+@time df = demo()
+df |> CSV.write("/tmp/ret.csv")
 
 end # module
