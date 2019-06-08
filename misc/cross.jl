@@ -68,8 +68,8 @@ function ret(net, θ, a₀)
     v₀ = val(a₀)
     ret = []
     for α = 0:0.1:(2 * pi)
-        a = a₀ .+ 0.05 .* [sin(α), cos(α)]
-        push!(ret, val(a) .- v₀)
+        a = a₀ .+ 0.05 .* a₀ .* [sin(α), cos(α)]
+        push!(ret, (val(a) .- v₀) ./ v₀)
     end
     ret
 end
