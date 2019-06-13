@@ -11,6 +11,7 @@ using LinearAlgebra
 using DataFrames
 using DataFramesMeta
 using CSV
+using NLsolve
 
 θ = BlackScholesParams(0., 2.5, 0.5)
 K = 2.
@@ -106,10 +107,16 @@ function cordata()
     function netcor(a₀, r, σ, wᵈ, ρ)
         L = cholesky([1 ρ; ρ 1]).L
         θ = BlackScholesParams(r, 1.0, σ, L)
-        net = XOSModel(zeros(2, 2), [0 wᵈ; wᵈ 0], I, fill(1.0, 2))
-        x, Δ = expectation(z -> [discount(θ) .* fixvalue(net, Aτ(a₀, θ, z)),
-                                 calcΔ(net, a₀, θ, z)],
-                           MonteCarloSampler(MvNormal(numfirms(net), 1.0)),
+        d = fill(1.0, 2)
+        net = XOSModel(zeros(2, 2), [0 wᵈ; wᵈ 0], I, d)
+        ## Use importance sampling which focuses on default boundary
+        μ = nlsolve(z -> Aτ(a₀, θ, z) .- (1 - wᵈ) .* d,
+                    [0.0, 0.0]).zero
+        q = MvNormal(μ, 3.0)
+        w(z) = exp(logpdf(MvNormal(numfirms(net), 1.), z) - logpdf(q, z))
+        x, Δ = expectation(z -> [w(z) .* discount(θ) .* fixvalue(net, Aτ(a₀, θ, z)),
+                                 w(z) .* calcΔ(net, a₀, θ, z)],
+                           MonteCarloSampler(q),
                            25000)
         tmp = diagm(0 => 1 ./ equityview(net, x)) * equityview(net, Δ) * diagm(0 => a₀) * L
         tmp * tmp'
