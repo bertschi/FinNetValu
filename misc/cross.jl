@@ -7,7 +7,9 @@ using Parameters
 using LinearAlgebra
 using Distributions
 using ForwardDiff
+using LinearAlgebra
 using DataFrames
+using DataFramesMeta
 using CSV
 
 θ = BlackScholesParams(0., 2.5, 0.5)
@@ -90,7 +92,37 @@ function demo()
     df
 end
 
-@time df = demo()
-df |> CSV.write("/tmp/ret.csv")
+# @time df = demo()
+# df |> CSV.write("/tmp/ret.csv")
+
+## Create larger data grid
+function cordata()
+    df = reduce(DataFrames.crossjoin,
+                [DataFrame(a₀ = 0.2:0.1:1.0),
+                 DataFrame(r = 0.0),
+                 DataFrame(σ = 0.1:0.2:0.5),
+                 DataFrame(wᵈ = 0.4:0.2:0.8),
+                 DataFrame(ρ = [-0.4, 0, 0.4, 0.8])])
+    function netcor(a₀, r, σ, wᵈ, ρ)
+        L = cholesky([1 ρ; ρ 1]).L
+        θ = BlackScholesParams(r, 1.0, σ, L)
+        net = XOSModel(zeros(2, 2), [0 wᵈ; wᵈ 0], I, fill(1.0, 2))
+        x, Δ = expectation(z -> [discount(θ) .* fixvalue(net, Aτ(a₀, θ, z)),
+                                 calcΔ(net, a₀, θ, z)],
+                           MonteCarloSampler(MvNormal(numfirms(net), 1.0)),
+                           25000)
+        tmp = diagm(0 => 1 ./ equityview(net, x)) * equityview(net, Δ) * diagm(0 => a₀) * L
+        tmp * tmp'
+    end
+    idx = 0
+    N = size(df, 1)
+    @byrow! df begin
+        idx += 1
+        @show idx / N
+        @newcol cor::Vector{Float64}
+        Σ = netcor([:a₀, :a₀], :r, :σ, :wᵈ, :ρ)
+        :cor = Σ[1,2] / √(Σ[1,1] * Σ[2,2])
+    end
+end
 
 end # module
