@@ -99,11 +99,11 @@ end
 ## Create larger data grid
 function cordata()
     df = reduce(DataFrames.crossjoin,
-                [DataFrame(a₀ = 0.2:0.1:1.0),
+                [DataFrame(a₀ = 0.025:0.025:0.9),
                  DataFrame(r = 0.0),
-                 DataFrame(σ = 0.1:0.2:0.5),
-                 DataFrame(wᵈ = 0.4:0.2:0.8),
-                 DataFrame(ρ = [-0.4, 0, 0.4, 0.8])])
+                 DataFrame(σ = [0.1, 0.4]),
+                 DataFrame(wᵈ = [0.2, 0.8]),
+                 DataFrame(ρ = -0.4:0.2:0.8)])
     function netcor(a₀, r, σ, wᵈ, ρ)
         L = cholesky([1 ρ; ρ 1]).L
         θ = BlackScholesParams(r, 1.0, σ, L)
