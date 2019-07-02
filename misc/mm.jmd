@@ -1,0 +1,158 @@
+The Merton model views equity and debt of a firm as call and put
+options on its business assets respectively. In markets, stock and
+bond prices are observed and can be used to infer the value of
+business assets.
+
+The model assumes that business assets evolve as a geometric Brownian
+motion, i.e.
+$$
+dA_t = \mu A_t dt + \sigma A_t dW_t \; .
+$$
+
+The market value of equity is computed by the Black-Scholes formula as
+the value of a call option
+$$
+S_t = C_{BS}(A_t, r, K, \tau, \sigma)
+$$
+and depends on the current asset value $A_t$, risk less interest rate $r$,
+nominal debt value $K$, time to maturity $\tau$ and asset volatility $\sigma$.
+
+Several methods have been proposed, to recover asset prices from
+observed market prices. The most straight-forward probably being
+maximum likelihood. In this case, asset returns $\frac{dA}{A}$ are
+modelled as Gaussian distributed with mean $\mu$ and standard
+deviation $\sigma$. By change of measure the corresponding the
+likelihood of observed stock prices $s_1, \ldots, s_T$ is given as
+$$
+p(s_1, \ldots, s_T | \mu, r, \tau, \sigma) = p(a_1, \ldots, a_T | \mu, \sigma) \left| \prod_t \frac{\partial a_t}{\partial s_t} \right|
+$$
+where $a_t$ is found by inverting $s_t = C_{BS}(a_t, r, \tau, \sigma)$
+and $\frac{\partial a_t}{\partial s_t}$ is the inverse option
+$\Delta$.
+
+Using Flux, we can optimize the likelihood as follows:
+
+```{julia}
+import Pkg
+Pkg.activate("/home/bertschi/GitRepos/FinNetValu/")
+
+using FinNetValu
+using Flux
+using Parameters
+using Distributions
+using DataFrames
+using CSV
+using Random
+using Plots
+```
+
+```{julia}
+function bisect(f::Function, low::Number, high::Number;
+                tol::AbstractFloat = 1e-6)
+    fl = f(low)
+    fh = f(high)
+    fl * fh <= 0 || error("f(low) = ", fl, " and f(high) = ", fh, " must have opposite signs!")
+    local mid
+    while high - low > tol
+        mid = (low + high) / 2
+        fm = f(mid)
+        if fl * fm > 0
+            low = mid
+            fl = fm
+        else
+            high = mid
+            fh = fm
+        end
+    end
+    return mid
+end
+
+function invcall(s, K, θ::BlackScholesParams)
+    bisect(a -> s - FinNetValu.callprice(a, K, θ), 0., 2 * (s + K) * discount(θ))
+end
+```
+
+```{julia}
+function callΔ(S₀, K, θ)
+    @unpack r, τ, σ = θ
+    FinNetValu.Φ.(FinNetValu.d₊.(S₀, K, r, τ, σ))
+end
+
+function loglik(s, r, μ, τ, K, σ, dt)
+    θ = BlackScholesParams(r, τ, σ)
+    ## Back out asset prices
+    a = map(x -> invcall(x, K, θ), s)
+    ## Jacobian correction
+    ll = - sum( log(callΔ(x, K, θ)) for x in a )
+    for t = 2:length(a)
+        ret = (a[t] - a[t-1]) / a[t-1]
+        ll += logpdf(Normal(μ * dt, σ * sqrt(dt)), ret)
+    end
+    ll
+end
+```
+
+```{julia}
+## Load some stock prices
+## aapl = CSV.read("~/Downloads/aapl.csv")
+
+Random.seed!(42)
+T = 7500
+μ = 0.1
+σ = 0.1
+dt = 1 / 250.
+a = accumulate( (aₜ, dWₜ) -> aₜ + μ * aₜ * dt + σ * aₜ * sqrt(dt) * dWₜ,
+                rand(Normal(0, 1), T);
+                init = 100.)
+θ = BlackScholesParams(0.02, 0.8, σ)
+s = map(x -> FinNetValu.callprice(x, 80., θ), a)
+
+@show mean(diff(a) ./ a[1:(end-1)]) / dt
+@show sqrt(var(diff(a) ./ a[1:(end-1)]) / dt)
+
+plot(plot(1:T, a), plot(1:T, s))
+```
+
+```{julia}
+function demo(s, dt)
+    par = param([0.02, 0.05, log(0.8), log(80), log(0.1)])
+    function loss(s, par)
+        r, μ, lnτ, lnK, lnσ = par
+        ## As in Duan only estimate μ and σ
+        - loglik(s, 0.02, 0.05, 0.8, 80, exp(lnσ), dt)
+    end
+    opt = ADAM()
+    for i = 1:2500
+        if i % 100 == 0
+            @info i
+            @show - loss(s, par)
+            r, μ, lnτ, lnK, lnσ = par
+            @show r, μ, exp(lnτ), exp(lnK), exp(lnσ)
+        end
+        grad = Flux.Tracker.gradient( () -> loss(s, par), Flux.params(par) )
+        Flux.Optimise.update!(opt, Flux.params(par), grad)
+    end
+    par
+end
+```
+
+Plot of the likelihood over $\mu$ and $\sigma$. Note that likelihood
+is almost flat over $\mu$.
+
+```{julia}
+μs = -0.05:0.01:0.15
+σs = 10 .^ (-3:0.1:0)
+ll = [loglik(s, 0.02, μ, 0.8, 80, σ, dt)
+      for μ in μs, σ in σs]
+heatmap(μs, log10.(σs), ll')
+```
+
+Nevertheless, the maximum likelihood solution recovers the actual
+parameters to the extend possible, i.e. it gives the empirical mean
+and standard deviation of the asset returns (see above).
+
+```{julia}
+idx = argmax(ll)
+@show μs[idx[1]]
+@show σs[idx[2]]
+```
