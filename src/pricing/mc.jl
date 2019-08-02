@@ -15,10 +15,10 @@ Samples holds `val` with `weight`.
 struct Sample{T}
     val::T
     weight::Float64
+end
 
-    function Sample(x::T) where T
-        new{T}(x, 1.0)
-    end
+function Sample(x)
+    Sample(x, 1.0)
 end
 
 Chain{T} = Vector{Sample{T}} where T
@@ -47,11 +47,12 @@ samples.
 function expectation(f::Function, samples::Chain)
     N = length(samples)
     @assert N > 0
+    # μ = mapreduce(s -> f(s.val) .* s.weight, +, samples)
     μ = f(samples[1].val) .* samples[1].weight
     for i in 2:N
         μ += f(samples[i].val) .* samples[i].weight
     end
-    μ ./ N
+    μ ./ mapreduce(s -> s.weight, +, samples)
 end
 
 ##############################
