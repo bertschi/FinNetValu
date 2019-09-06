@@ -39,8 +39,7 @@ function expectationIS(f, p, q, N)
     end
     Z = [tmp() for _ = 1:N]
     Nₑ = neff(map(x -> x.weight, Z))
-    @show Nₑ
-    expectation(f, Z)
+    expectation(f, Z), Nₑ
 end
 
 """
@@ -64,8 +63,10 @@ function netstat(net, a₀, θ, stat_fun; samples = 25000)
                   samples)
 end
 
-valΔ(net, a₀, θ, z) = [discount(θ) .* fixvalue(net, Aτ(a₀, θ, z)),
-                       calcΔ(net, a₀, θ, z)]
+function valΔ(net, a₀, θ, z)
+    x = fixvalue(net, Aτ(a₀, θ, z))
+    [discount(θ) .* x, calcΔ(net, a₀, θ, z), solvent(net, x)]
+end
 
 ## Run data grid and compute correlations along the way
 function calcΣ(net, x, Δ, a₀, θ)
@@ -77,20 +78,9 @@ function calcΣ(net, x, Δ, a₀, θ)
     Lˢ * Lˢ'
 end
 
-"""
-Like map, but uses Threads.@thread to parallelize iteration.
-"""
-function parmap(f, arg, args...)
-    res = Vector{Any}(undef, length(arg))
-    Threads.@threads for (i, a) in collect(enumerate(zip(arg, args...)))
-        res[i] = f(a...)
-    end
-    res
-end
-
 function cordata()
     df = reduce(DataFrames.crossjoin,
-                [DataFrame(a0 = exp.(-3:0.25:1)),
+                [DataFrame(a0 = exp.(-3:0.05:1)),
                  DataFrame(md12 = 0:0.2:0.8),
                  DataFrame(md21 = 0:0.2:0.8),
                  DataFrame(sigma = [0.2, 0.4]),
@@ -101,19 +91,25 @@ function cordata()
         a₀ = a₀ .* ones(2)
         θ = BlackScholesParams(0, 1, [σ, σ], LinearAlgebra.cholesky([1 ρ; ρ 1]).L)
         net = XOSModel(zeros(2, 2), [0 md12; md21 0], LinearAlgebra.I, [1.0, 1.0])
-        x, Δ = netstat(net, a₀, θ, valΔ; samples = 25000)
+        tmp, Nₑ = netstat(net, a₀, θ, valΔ; samples = 250000)
+        x, Δ, ξ = tmp
         Σ = calcΣ(net, x, Δ, a₀, θ)
-        Σ[1,2] / √(Σ[1,1] * Σ[2,2])
+        (ρ = Σ[1,2] / √(Σ[1,1] * Σ[2,2]), ξ = ξ, Nₑ = Nₑ)
     end
-    @transform(df, rhoS = Distributed.pmap(rhoS, 1:nrow(df), :a0, :md12, :md21, :sigma, :rho))
+    @linq df |>
+        transform(tmp = Distributed.pmap(rhoS, 1:nrow(df), :a0, :md12, :md21, :sigma, :rho)) |>
+        transform(rhoS = map(x -> x.ρ, :tmp),
+                  Neff = map(x -> x.Nₑ, :tmp),
+                  pd1 = map(x -> 1 - x.ξ[1], :tmp),
+                  pd2 = map(x -> 1 - x.ξ[2], :tmp))
 end
 
 function cordata2()
     df = reduce(DataFrames.crossjoin,
-                [DataFrame(a1 = exp.(-3:0.25:1)),
-                 DataFrame(a2 = exp.(-3:0.25:1)),
-                 DataFrame(md12 = 0:0.4:0.8),
-                 DataFrame(md21 = 0:0.4:0.8),
+                [DataFrame(a1 = exp.(-3:0.1:1)),
+                 DataFrame(a2 = exp.(-3:0.1:1)),
+                 DataFrame(md12 = 0:0.2:0.8),
+                 DataFrame(md21 = 0:0.2:0.8),
                  DataFrame(sigma = 0.4),
                  DataFrame(rho = 0.0)])
     function rhoS(idx, a1, a2, md12, md21, σ, ρ)
@@ -122,11 +118,17 @@ function cordata2()
         a₀ = [a1, a2]
         θ = BlackScholesParams(0, 1, [σ, σ], LinearAlgebra.cholesky([1 ρ; ρ 1]).L)
         net = XOSModel(zeros(2, 2), [0 md12; md21 0], LinearAlgebra.I, [1.0, 1.0])
-        x, Δ = netstat(net, a₀, θ, valΔ; samples = 25000)
+        tmp, Nₑ = netstat(net, a₀, θ, valΔ; samples = 250000)
+        x, Δ, ξ = tmp
         Σ = calcΣ(net, x, Δ, a₀, θ)
-        Σ[1,2] / √(Σ[1,1] * Σ[2,2])
+        (ρ = Σ[1,2] / √(Σ[1,1] * Σ[2,2]), ξ = ξ, Nₑ = Nₑ)
     end
-    @transform(df, rhoS = Distributed.pmap(rhoS, 1:nrow(df), :a1, :a2, :md12, :md21, :sigma, :rho))
+    @linq df |>
+        transform(tmp = Distributed.pmap(rhoS, 1:nrow(df), :a1, :a2, :md12, :md21, :sigma, :rho)) |>
+        transform(rhoS = map(x -> x.ρ, :tmp),
+                  Neff = map(x -> x.Nₑ, :tmp),
+                  pd1 = map(x -> 1 - x.ξ[1], :tmp),
+                  pd2 = map(x -> 1 - x.ξ[2], :tmp))
 end
 
 ## Run it
