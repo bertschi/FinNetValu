@@ -5,13 +5,15 @@ using DataFramesMeta
 using Distributions
 ## using Gadfly
 import NLsolve
-import LinearAlgebra
+using LinearAlgebra
 import ForwardDiff
 import CSV
 
 import Pkg
 Pkg.activate("/home/bertschinger/GitRepos/FinNetValu")
 using FinNetValu
+using ProgressMeter
+using Distributed
 
 ## First we define some helper functions
 
@@ -76,6 +78,14 @@ function calcΣ(net, x, Δ, a₀, θ)
     a₀ = a₀ .* ones(numfirms(net))
     Lˢ = LinearAlgebra.diagm(0 => (1 ./ s)) * Δˢ * LinearAlgebra.diagm(0 => a₀) * LinearAlgebra.diagm(0 => σ) * θ.Lᵨ
     Lˢ * Lˢ'
+end
+
+@everywhere function compute(a₀, σ₁, σ₂, md12, md21, ms12, ms21, ρ)
+    net = XOSModel([0 ms12; ms21 0], [0 md12; md21 0], I, [1.0, 1.0])
+    θ = BlackScholesParams(0.02, 1.5, [σ₁, σ₂], cholesky([1 ρ; ρ 1]).L)
+    x, Δ = netstat(net, a₀, θ, valΔ)
+    Σ = calcΣ(net, x, Δ, a₀, θ)
+    Σ[1,2] / √(Σ[1,1] * Σ[2,2])
 end
 
 function cordata()
