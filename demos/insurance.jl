@@ -290,24 +290,24 @@ end
 
 import NLsolve
 
-function costdist_net(dᵉ, L::AbstractMatrix)
+function costdist_net(xosmodel, dᵉ, L::AbstractMatrix)
     N, M = size(L)
     @assert N == M "Liabilitiy matrix must be square!"
 
     d = vec(sum(L; dims = 2)) .+ dᵉ
     Mᵈ = (L ./ d)'
-    XOSModel(zeros(N, N), Mᵈ, I, d)
+    xosmodel(zeros(N, N), Mᵈ, I, d)
 end
 
-function costdist_fun(net::XOSModel, a₀, θ::BlackScholesParams, z::AbstractVector)
+function costdist_fun(net, a₀, θ::BlackScholesParams, z::AbstractVector)
     a = Aτ(a₀, θ, z)
     insurancecost(net, a), sum(1 .- solvent(net, fixvalue(net, a)))
 end
 
-function costdist_sim(net::XOSModel, a₀::Union{AbstractFloat,AbstractVector}, θ::BlackScholesParams)
+function costdist_sim(net, a₀::Union{AbstractFloat,AbstractVector}, θ::BlackScholesParams)
     pz = MvNormal(numfirms(net), 1)
     map(z -> FinNetValu.Sample(costdist_fun(net, a₀, θ, z)),
-        [ rand(pz) for _ = 1:100000 ])
+        [ rand(pz) for _ = 1:1000 ])
 end
 
 function costdist_sim_is(net::XOSModel, a₀::Union{AbstractFloat,AbstractVector}, θ::BlackScholesParams)
@@ -326,17 +326,21 @@ function costdist_sim_is(net::XOSModel, a₀::Union{AbstractFloat,AbstractVector
         [ rand(qz) for _ = 1:100000 ])
 end
 
-function costdist_demo(lij, sim)
+function full_graph(N)
+    [if (i == j) 0.0 else 1.0 end
+     for i = 1:N, j = 1:N]
+end
+
+function costdist_demo(lij, sim, model)
     # ## 8 large and 16 small banks
     # dᵉ = vcat(fill(10., 8), fill(1., 16))
-    dᵉ = fill(1., 2)
+    dᵉ = fill(1., 25)
     N = length(dᵉ)
     
-    L = [if (i == j) 0.0 else lij end
-         for i = 1:N, j = 1:N]
-    net = costdist_net(dᵉ, L)
+    L = lij .* full_graph(N)
+    net = model(dᵉ, L)
 
-    sim(net, 1.1 .* dᵉ, BlackScholesParams(0.0, 1.0, 0.4))
+    sim(net, 2.2 .* dᵉ, BlackScholesParams(0.0, 1.0, 0.4))
 end
 
 function scatter_res(samples)
@@ -350,3 +354,70 @@ function box_res(samples)
     boxplot(map(x -> x.val[2], samples),
             map(x -> x.val[1], samples))
 end
+
+function costdist_main(model)
+    function run(model, lij)
+        res = costdist_demo(lij, costdist_sim, model)
+        Plots.plot(scatter_res(res), histogram(map(x -> x.val[2], res)))
+    end
+    Plots.plot([run(model, lij) for lij in [0.0, 8.0]]...,
+               layout = (2,1))
+end
+
+## For comparison create XOSModel with default cost
+
+struct XOSModelCost{T1,T2,T3,U,V} <: FinNetValu.FinancialModel
+    N::Int64
+    Mˢ::T1
+    Mᵈ::T2
+    Mᵉ::T3
+    d::U
+    β::V
+
+    function XOSModelCost(Mˢ::T1, Mᵈ::T2, Mᵉ::T3, d::AbstractVector, β::Real) where {T1,T2,T3}
+        @assert FinNetValu.isleft_substochastic(Mˢ)
+        @assert FinNetValu.isleft_substochastic(Mᵈ)
+        @assert all(d .>= 0)
+        new{T1,T2,T3,typeof(d),typeof(β)}(length(d), Mˢ, Mᵈ, Mᵉ, d, β)
+    end
+end
+
+FinNetValu.numfirms(net::XOSModelCost) = net.N
+
+recovery(d, x, β) = if (x < d) β * x else d end
+
+function FinNetValu.valuation!(y, net::XOSModelCost, x, a)
+    tmp = net.Mᵉ * a .+ net.Mˢ * equityview(net, x) .+ net.Mᵈ * debtview(net, x)
+    equityview(net, y) .= max.(zero(eltype(x)), tmp .- net.d)
+    debtview(net, y)   .= recovery.(net.d, tmp, net.β)
+end
+
+function FinNetValu.valuation(net::XOSModelCost, x, a)
+    tmp = net.Mᵉ * a .+ net.Mˢ * equityview(net, x) .+ net.Mᵈ * debtview(net, x)
+    vcat(max.(zero(eltype(x)), tmp .- net.d),
+         recovery.(net.d, tmp, net.β))
+end
+
+function FinNetValu.solvent(net::XOSModelCost, x)
+    equityview(net, x) .> zero(eltype(x))
+end
+
+function FinNetValu.init(net::XOSModelCost, a)
+    vcat(max.(a .- net.d, 0), net.d)
+end
+
+FinNetValu.equityview(net::XOSModelCost, x::AbstractVector) = view(x, 1:numfirms(net))
+FinNetValu.equityview(net::XOSModelCost, x::AbstractMatrix) = view(x, 1:numfirms(net), :)
+
+FinNetValu.debtview(net::XOSModelCost, x::AbstractVector) = begin N = numfirms(net); view(x, (N+1):(2*N)) end
+FinNetValu.debtview(net::XOSModelCost, x::AbstractMatrix) = begin N = numfirms(net); view(x, (N+1):(2*N), :) end
+
+
+## Should be able to derive this!!
+function insurancecost(net::XOSModelCost, a::AbstractVector)
+    r = debtview(net, fixvalue(net, a))
+    α = 1 .- vec(sum(net.Mᵈ; dims = 1)) ## Fraction of external debt
+    dᵉ = α .* net.d
+    sum(dᵉ .- α .* r) / sum(dᵉ)
+end
+    
