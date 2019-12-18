@@ -29,6 +29,8 @@ logodds <- function (p) {
 }
 
 read_csv("data/cordata.csv") %>%
+    filter(abs(logodds(pd1)) < 10) %>%
+    filter(abs(logodds(pd2)) < 10) %>%
     ggplot(aes(logodds(pd1), rhoS,
                group = interaction(rho, md12),
                color = logodds(pd2))) +
@@ -37,7 +39,13 @@ read_csv("data/cordata.csv") %>%
     facet_grid(sigma ~ md21) +
     scale_y_continuous(breaks = seq(-0.4, 0.8, by = 0.4)) +
     theme_tufte() +
-    theme(panel.grid.major.y = element_line(color = "grey80"))
+    theme(text = element_text(size = 16),
+          panel.grid.major.y = element_line(color = "grey80")) +
+    labs(x = TeX("$\\mathrm{logit}(\\pi_{d\\cdot})$"),
+         y = TeX("$\\rho_s$"),
+         color = TeX("$\\mathrm{logit}(\\pi_{\\cdot d})$"))
+
+ggsave("/tmp/fig_rhoS_logodds.pdf")
 
 read_csv("data/cordata.csv") %>%
     ggplot(aes(a0, pd1,
