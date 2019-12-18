@@ -420,4 +420,8 @@ function insurancecost(net::XOSModelCost, a::AbstractVector)
     dᵉ = α .* net.d
     sum(dᵉ .- α .* r) / sum(dᵉ)
 end
-    
+
+## Example call with default cost
+# β = 0.0
+# model(ms,md,me,d) = XOSModelCost(ms,md,me,d,β)
+# costdist_main((d,L) -> costdist_net(model, d, L))
