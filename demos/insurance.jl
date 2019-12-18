@@ -283,3 +283,70 @@ end
 
 # Try this ...
 # L = optineva(insurancecost; σ = 0.25, β = 0.7, algo = ConjugateGradient())
+
+################################################################################
+## Investigate the loss distribution with and without debt cross-holdings
+################################################################################
+
+import NLsolve
+
+function costdist_net(dᵉ, L::AbstractMatrix)
+    N, M = size(L)
+    @assert N == M "Liabilitiy matrix must be square!"
+
+    d = vec(sum(L; dims = 2)) .+ dᵉ
+    Mᵈ = (L ./ d)'
+    XOSModel(zeros(N, N), Mᵈ, I, d)
+end
+
+function costdist_fun(net::XOSModel, a₀, θ::BlackScholesParams, z::AbstractVector)
+    a = Aτ(a₀, θ, z)
+    insurancecost(net, a), sum(1 .- solvent(net, fixvalue(net, a)))
+end
+
+function costdist_sim(net::XOSModel, a₀::Union{AbstractFloat,AbstractVector}, θ::BlackScholesParams)
+    pz = MvNormal(numfirms(net), 1)
+    map(z -> FinNetValu.Sample(costdist_fun(net, a₀, θ, z)),
+        [ rand(pz) for _ = 1:100000 ])
+end
+
+function costdist_sim_is(net::XOSModel, a₀::Union{AbstractFloat,AbstractVector}, θ::BlackScholesParams)
+    ## Use importance sampling focusing on default boundary
+    function val(net, a)
+        x = fixvalue(net, a)
+        equityview(net, x) .+ debtview(net, x)
+    end
+    deff = NLsolve.nlsolve(a -> val(net, a) .- net.d, net.d).zero ## Find point where all firms just default
+    μ = NLsolve.nlsolve(z -> Aτ(a₀, θ, z) .- deff, zeros(numfirms(net))).zero ## Find corresponding unconstrained asset values
+    qz = MvNormal(0.5 .* μ, max.(2.0, μ)) ## Importance density
+    pz = MvNormal(numfirms(net), 1)     ## Sampling density
+    w(z) = exp(logpdf(pz, z) - logpdf(qz, z))
+
+    map(z -> FinNetValu.Sample(costdist_fun(net, a₀, θ, z), w(z)),
+        [ rand(qz) for _ = 1:100000 ])
+end
+
+function costdist_demo(lij, sim)
+    # ## 8 large and 16 small banks
+    # dᵉ = vcat(fill(10., 8), fill(1., 16))
+    dᵉ = fill(1., 2)
+    N = length(dᵉ)
+    
+    L = [if (i == j) 0.0 else lij end
+         for i = 1:N, j = 1:N]
+    net = costdist_net(dᵉ, L)
+
+    sim(net, 1.1 .* dᵉ, BlackScholesParams(0.0, 1.0, 0.4))
+end
+
+function scatter_res(samples)
+    scatter(map(x -> x.val[2], samples),
+            map(x -> x.val[1], samples),
+            markeralpha = map(x -> x.weight, samples),
+            markersize = 1)
+end
+
+function box_res(samples)
+    boxplot(map(x -> x.val[2], samples),
+            map(x -> x.val[1], samples))
+end
