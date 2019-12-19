@@ -307,7 +307,7 @@ end
 function costdist_sim(net, a₀::Union{AbstractFloat,AbstractVector}, θ::BlackScholesParams)
     pz = MvNormal(numfirms(net), 1)
     map(z -> FinNetValu.Sample(costdist_fun(net, a₀, θ, z)),
-        [ rand(pz) for _ = 1:1000 ])
+        [ rand(pz) for _ = 1:2500 ])
 end
 
 function costdist_sim_is(net::XOSModel, a₀::Union{AbstractFloat,AbstractVector}, θ::BlackScholesParams)
@@ -337,7 +337,7 @@ function costdist_demo(lij, sim, model)
     dᵉ = fill(1., 75)
     N = length(dᵉ)
 
-    L = rescale(erdosrenyi(N, 0.1, true), lij) ## lij .* full_graph(N)
+    L = rescale(erdosrenyi(N, 1, true), lij) ## lij .* full_graph(N)
     net = model(dᵉ, L)
 
     sim(net, 2.2 .* dᵉ, BlackScholesParams(0.0, 1.0, 0.4))
@@ -403,7 +403,8 @@ function FinNetValu.solvent(net::XOSModelCost, x)
 end
 
 function FinNetValu.init(net::XOSModelCost, a)
-    vcat(max.(a .- net.d, 0), net.d)
+    ## vcat(max.(a .- net.d, 0), net.d)
+    fixvalue(XOSModel(net.Mˢ, net.Mᵈ, net.Mᵉ, net.d), a)
 end
 
 FinNetValu.equityview(net::XOSModelCost, x::AbstractVector) = view(x, 1:numfirms(net))
@@ -425,3 +426,31 @@ end
 # β = 0.0
 # model(ms,md,me,d) = XOSModelCost(ms,md,me,d,β)
 # costdist_main((d,L) -> costdist_net(model, d, L))
+
+function costdist_data(csvfile, N)
+    dᵉ = fill(1., N)
+
+    σ = 0.4
+    θ = BlackScholesParams(0.0, 1.0, σ)
+    DataFrame() |> CSV.write(csvfile;
+                             header = [:N, :sigma, :k, :beta, :lij, :a0, :nd, :cost])
+    for β in [0., 0.4, 0.9, 1]
+        for lij in [0, 2., 8.]
+            for k in vcat(0, 10 .^ (-1:0.25:log10(N)), N)
+                for a₀ in [1.5, 2., 2.5]
+                    model(ms,md,me,d) = XOSModelCost(ms,md,me,d,β)
+                    L = rescale(erdosrenyi(N, k / N, true), lij)
+                    net = costdist_net(model, dᵉ, L)
+
+                    res = costdist_sim(net, a₀ .* dᵉ, θ)
+                    cost = map(x -> x.val[1], res)
+                    nd   = map(x -> x.val[2], res)
+
+                    DataFrame(N = N, sigma = σ, k = k, beta = β, lij = lij, a₀ = a₀,
+                              nd = nd, cost = cost) |> CSV.write(csvfile;
+                                                                 append = true)
+                end
+            end
+        end
+    end
+end
