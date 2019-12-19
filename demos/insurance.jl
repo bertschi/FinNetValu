@@ -334,10 +334,10 @@ end
 function costdist_demo(lij, sim, model)
     # ## 8 large and 16 small banks
     # dᵉ = vcat(fill(10., 8), fill(1., 16))
-    dᵉ = fill(1., 25)
+    dᵉ = fill(1., 75)
     N = length(dᵉ)
-    
-    L = lij .* full_graph(N)
+
+    L = rescale(erdosrenyi(N, 0.1, true), lij) ## lij .* full_graph(N)
     net = model(dᵉ, L)
 
     sim(net, 2.2 .* dᵉ, BlackScholesParams(0.0, 1.0, 0.4))
