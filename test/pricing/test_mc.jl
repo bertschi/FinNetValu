@@ -13,7 +13,7 @@ end
 
 @testset "sampling" begin
     ## Note: Test should pass with 99% probability
-    N = 1000
+    N = 100
     mu = 1.0
     sigma = 1.0
     @test hit99(FinNetValu.expectation(x -> x, FinNetValu.MonteCarloSampler(Distributions.Normal(mu, sigma)), N), mu, sigma, N)

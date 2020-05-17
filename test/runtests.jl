@@ -8,8 +8,8 @@ end
 
 @testset "utils" begin
     include("./utils/test_utils.jl")
-    include("./utils/test_nets.jl")
 end
+
 
 @testset "pricing" begin
     include("./pricing/test_mc.jl")
@@ -17,5 +17,6 @@ end
 end
 
 @testset "models" begin
+    include("./models/test_rogers.jl")
     include("./models/test_xos.jl")
 end
