@@ -40,7 +40,7 @@ end
 ##############################################
 
 
-valuation!(y, net::RogersModel, x, a) = y
+valuation!(y, net::RogersModel, x, a) = nothing # Inplace not really usable, since we drag all μ iterations along
 
 #TODO: check if cutoff is needed: res[x .< sum(net.L, dims=[2])[:,1]] .= zeros(eltype(x))
 function valuation(net::RogersModel, Λ, a) 
