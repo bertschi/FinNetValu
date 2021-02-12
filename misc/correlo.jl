@@ -10,7 +10,7 @@ import ForwardDiff
 import CSV
 
 import Pkg
-Pkg.activate("/home/bertschinger/GitRepos/FinNetValu")
+Pkg.activate("/home/bertschi/GitRepos/FinNetValu")
 using FinNetValu
 using ProgressMeter
 using Distributed
@@ -90,7 +90,8 @@ end
 
 function cordata()
     df = reduce(DataFrames.crossjoin,
-                [DataFrame(a0 = exp.(-3:0.05:1)),
+                [DataFrame(a0 = exp.(-3:0.1:1)),
+                 ## DataFrame(a0 = exp.(-3:0.05:1)),
                  DataFrame(md12 = 0:0.2:0.8),
                  DataFrame(md21 = 0:0.2:0.8),
                  DataFrame(sigma = [0.2, 0.4]),
@@ -100,18 +101,25 @@ function cordata()
         @show a₀, md12, md21, σ, ρ
         a₀ = a₀ .* ones(2)
         θ = BlackScholesParams(0, 1, [σ, σ], LinearAlgebra.cholesky([1 ρ; ρ 1]).L)
-        net = XOSModel(zeros(2, 2), [0 md12; md21 0], LinearAlgebra.I, [1.0, 1.0])
-        tmp, Nₑ = netstat(net, a₀, θ, valΔ; samples = 250000)
+        ms12 = ms21 = 0.1
+        net = XOSModel([0 ms12; ms21 0], [0 md12; md21 0], LinearAlgebra.I, [1.0, 1.0])
+        @time tmp, Nₑ = netstat(net, a₀, θ, valΔ; samples = 125000) ## samples = 250000)
         x, Δ, ξ = tmp
         Σ = calcΣ(net, x, Δ, a₀, θ)
-        (ρ = Σ[1,2] / √(Σ[1,1] * Σ[2,2]), ξ = ξ, Nₑ = Nₑ)
+        (ρ = Σ[1,2] / √(Σ[1,1] * Σ[2,2]), ξ = ξ, Nₑ = Nₑ,
+         s = equityview(net, x),
+         r = debtview(net, x))
     end
     @linq df |>
         transform(tmp = Distributed.pmap(rhoS, 1:nrow(df), :a0, :md12, :md21, :sigma, :rho)) |>
         transform(rhoS = map(x -> x.ρ, :tmp),
                   Neff = map(x -> x.Nₑ, :tmp),
                   pd1 = map(x -> 1 - x.ξ[1], :tmp),
-                  pd2 = map(x -> 1 - x.ξ[2], :tmp))
+                  pd2 = map(x -> 1 - x.ξ[2], :tmp),
+                  s1 = map(x -> x.s[1], :tmp),
+                  s2 = map(x -> x.s[2], :tmp),
+                  r1 = map(x -> x.r[1], :tmp),
+                  r2 = map(x -> x.r[2], :tmp))
 end
 
 function cordata2()
