@@ -61,6 +61,8 @@ end
 
 numfirms(net::NEVAModel) = net.N
 
+nominaldebt(net::NEVAModel) = net.l
+
 function valuation!(y, net::NEVAModel, x, a)
     y .= a .* net.𝕍ᵉ(net, x, a) .+ rowsums(net.A .* net.𝕍(net, x, a)) .- net.l
 end
@@ -73,11 +75,15 @@ function solvent(net::NEVAModel, x)
     x .> zero(eltype(x))
 end
 
-bookequity(net::NEVAModel, a) = a .+ rowsums(net.A) .- net.l
-
-function init(net::NEVAModel, a)
+function init(sol::NLSolver, net::NEVAModel, a)
     net.E₀(net, a)
 end
+
+function init(sol::PicardIteration, net::NEVAModel, a)
+    net.E₀(net, a)
+end
+
+bookequity(net::NEVAModel, a) = a .+ rowsums(net.A) .- net.l
 
 ##########################################
 # Constructors for different models from #
@@ -103,7 +109,7 @@ where ``\\bar{p}_j = \\sum_k L_{jk}``.
 This valuation was shown to correspond to the model by Eisenberg & Noe.
 """
 function EisenbergNoeModel(Lᵉ::AbstractVector, L::AbstractMatrix)
-    pbar = vec(sum(L; dims = 2))
+    pbar = rowsums(L) .+ Lᵉ
     function val(net, e, a)
         # Note: rowvector gets broadcasted correctly as 𝕍(Eⱼ)
         transpose(valueEN.(e, pbar))
@@ -115,6 +121,17 @@ function EisenbergNoeModel(Lᵉ::AbstractVector, L::AbstractMatrix)
               val,
               bookequity)
 end
+
+function equity(net::NEVAModel, x)
+    ξ = solvent(net, x)
+    ξ .* x
+end
+
+function debt(net::NEVAModel, x)
+    ξ = solvent(net, x)
+    nominaldebt(net) .+ (1 .- ξ) .* x 
+end
+
 
 valueFurfine(e::Real, R::Real) = if (e > 0) 1. else R end
 

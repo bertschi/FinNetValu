@@ -47,14 +47,22 @@ end
 
 numfirms(net::XOSModel) = net.N
 
+nominaldebt(net::XOSModel) = net.d
+
+equity(net::XOSModel, x::AbstractVector) = view(x, 1:numfirms(net))
+equity(net::XOSModel, x::AbstractMatrix) = view(x, 1:numfirms(net), :)
+
+debt(net::XOSModel, x::AbstractVector) = begin N = numfirms(net); view(x, (N+1):(2*N)) end
+debt(net::XOSModel, x::AbstractMatrix) = begin N = numfirms(net); view(x, (N+1):(2*N), :) end
+
 function valuation!(y, net::XOSModel, x, a)
-    tmp = net.Mᵉ * a .+ net.Mˢ * equityview(net, x) .+ net.Mᵈ * debtview(net, x)
-    equityview(net, y) .= max.(zero(eltype(x)), tmp .- net.d)
-    debtview(net, y)   .= min.(net.d, tmp)
+    tmp = net.Mᵉ * a .+ net.Mˢ * equity(net, x) .+ net.Mᵈ * debt(net, x)
+    equity(net, y) .= max.(zero(eltype(x)), tmp .- net.d)
+    debt(net, y)   .= min.(net.d, tmp)
 end
 
 function valuation(net::XOSModel, x, a)
-    tmp = net.Mᵉ * a .+ net.Mˢ * equityview(net, x) .+ net.Mᵈ * debtview(net, x)
+    tmp = net.Mᵉ * a .+ net.Mˢ * equity(net, x) .+ net.Mᵈ * debt(net, x)
     vcat(max.(zero(eltype(x)), tmp .- net.d),
          min.(net.d, tmp))
 end
@@ -70,35 +78,13 @@ function fixjacobian(net::XOSModel, a, x = fixvalue(net, a))
 end
 
 function solvent(net::XOSModel, x)
-    equityview(net, x) .> zero(eltype(x))
+    equity(net, x) .> zero(eltype(x))
 end
 
-function init(net::XOSModel, a)
+function init(sol::NLSolver, net::XOSModel, a)
     vcat(max.(a .- net.d, 0), net.d)
 end
 
-##########################
-# Model specific methods #
-##########################
-
-"""
-    equityview(net, x)
-
-View the equity part of `x` which can be a state vector of Jacobian
-matrix.
-"""
-function equityview end
-
-"""
-    debtview(net, x)
-
-View the debt part of `x` which can be a state vector of Jacobian
-matrix.
-"""
-function debtview end
-
-equityview(net::XOSModel, x::AbstractVector) = view(x, 1:numfirms(net))
-equityview(net::XOSModel, x::AbstractMatrix) = view(x, 1:numfirms(net), :)
-
-debtview(net::XOSModel, x::AbstractVector) = begin N = numfirms(net); view(x, (N+1):(2*N)) end
-debtview(net::XOSModel, x::AbstractMatrix) = begin N = numfirms(net); view(x, (N+1):(2*N), :) end
+function init(sol::PicardIteration, net::XOSModel, a)
+    vcat(max.(a .- net.d, 0), net.d)
+end

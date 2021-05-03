@@ -9,11 +9,12 @@ include("models/neva.jl")
 include("models/xos.jl")
 
 # Generic financial model interface
-export fixvalue, fixjacobian, valuation!, valuation, solvent, numfirms
+export fixvalue, fixjacobian, valuation!, valuation
+export numfirms, nominaldebt, solvent, equity, debt
 # Model constructors
 export XOSModel, NEVAModel, EisenbergNoeModel, FurfineModel, LinearDebtRankModel, ExAnteEN_BS_Model
-# Model specifics
-export bookequity, equityview, debtview
+# Solution methods
+export NLSolver, PicardIteration
 
 # Pricing helpers
 export BlackScholesParams, Aτ, discount
