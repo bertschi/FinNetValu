@@ -19,4 +19,5 @@ end
 @testset "models" begin
     include("./models/test_xos.jl")
     include("./models/test_neva.jl")
+    include("./models/test_rv.jl")
 end

@@ -146,7 +146,7 @@ function valueRV(e::Real, a::Real, p̄::Real, α::Real, β::Real)
 end
 
 """
-    RogersVeraartModel(Lᵉ, L)
+    RogersVeraartModel(Lᵉ, L, α, β)
 
 Creates an instance of the NEVAModel with valuation functions
 

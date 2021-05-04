@@ -7,14 +7,21 @@ include("pricing/mc.jl")
 include("models/model.jl")
 include("models/neva.jl")
 include("models/xos.jl")
+include("models/rv.jl")
 
 # Generic financial model interface
 export fixvalue, fixjacobian, valuation!, valuation
-export numfirms, nominaldebt, solvent, ModelState
+export numfirms, nominaldebt, solvent
+export ModelState, finalizestate
 # Model constructors
-export XOSModel, NEVAModel, EisenbergNoeModel, RogersVeraartModel, FurfineModel, LinearDebtRankModel, ExAnteEN_BS_Model
+export
+    XOSModel,
+    NEVAModel, EisenbergNoeModel, RogersVeraartModel, FurfineModel, LinearDebtRankModel, ExAnteEN_BS_Model,
+    RVOrigModel, RVEqModel
 # Solution methods
-export NLSolver, PicardIteration
+export
+    NLSolver, PicardIteration,
+    GCVASolver
 
 # Pricing helpers
 export BlackScholesParams, Aτ, discount
