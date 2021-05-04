@@ -10,9 +10,9 @@ include("models/xos.jl")
 
 # Generic financial model interface
 export fixvalue, fixjacobian, valuation!, valuation
-export numfirms, nominaldebt, solvent, equity, debt
+export numfirms, nominaldebt, solvent, ModelState
 # Model constructors
-export XOSModel, NEVAModel, EisenbergNoeModel, FurfineModel, LinearDebtRankModel, ExAnteEN_BS_Model
+export XOSModel, NEVAModel, EisenbergNoeModel, RogersVeraartModel, FurfineModel, LinearDebtRankModel, ExAnteEN_BS_Model
 # Solution methods
 export NLSolver, PicardIteration
 

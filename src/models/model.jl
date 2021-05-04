@@ -8,6 +8,11 @@ Base type of all financial network models.
 abstract type FinancialModel end
 
 """
+Base type of cascading default models.
+"""
+abstract type DefaultModel <: FinancialModel end
+
+"""
     valuation!(y, net, x, a)
 
 Updates the state `y` of a financial `net` based on the current state
@@ -33,10 +38,31 @@ function valuation end
 """
     init(solver, net, a)
 
-Small wrapper to generate initial state `x₀` suitable for fixed
-point `solver`.
+Generates initial state `x₀` suitable for fixed point `solver`.
 """
 function init end
+
+"""
+Structure to hold equity and debt value of model
+"""
+struct ModelState{U}
+    equity::U
+    debt::U
+
+    function ModelState(equity::U, debt::U) where {U <: AbstractVector}
+        new{U}(equity, debt)
+    end
+end
+
+"""
+    finalizestate(net, x, a)
+
+Constructs equity-debt struct [of type ModelState] from state `x` with
+external asset values `a`.
+
+Called from fixvalue if not prevented.
+"""
+function finalizestate end
 
 """
     valuefunc(net, a)
@@ -58,7 +84,7 @@ Base type of fixed-point solution methods.
 abstract type FixSolver end
 
 """
-    fixvalue(solver, net, a)
+    fixvalue(solver, net, a; finalize = true)
 
 Solve for self-consistent fixed point value using method `solver` of
 model `net` for external asset values `a`.
@@ -68,14 +94,27 @@ Note: Solver options should be part of `solver` type.
 function fixvalue end
 
 struct NLSolver <: FixSolver
-    opts::NamedTuple
+    opts
+
+    function NLSolver(; opts...)
+        new(opts)
+    end
 end
 
-function fixvalue(sol::NLSolver, net::FinancialModel, a)
+function maybefinalize(flag, net, x, a)
+    if flag
+        finalizestate(net, x, a)
+    else
+        x
+    end
+end
+
+function fixvalue(sol::NLSolver, net::FinancialModel, a;
+                  finalize = true)
     sol = fixedpoint(valuefunc(net, a),
                      init(sol, net, a);
                      sol.opts...)
-    sol.zero
+    maybefinalize(finalize, net, sol.zero, a)
 end
 
 struct PicardIteration{T <: Real} <: FixSolver
@@ -83,29 +122,27 @@ struct PicardIteration{T <: Real} <: FixSolver
     rtol::T
 end
 
-function fixvalue(sol::PicardIteration, net::FinancialModel, a)
+function fixvalue(sol::PicardIteration, net::FinancialModel, a;
+                  finalize = true)
     x = init(sol, net, a)
     y = valuation(net, x, a)
     while !isapprox(x, y;
                     atol = sol.atol, rtol = sol.rtol)
         x, y = y, valuation(net, y, a)
     end
-    y
+    maybefinalize(finalize, net, y, a)
 end
 
 """
-    fixjacobian(net, a [, x])
+    fixjacobian(net, x, a)
 
 Compute the Jacobian matrix of `fixvalue(net, a)` using the implicit
 function theorem and autodiff (currently via ForwardDiff).
 
-Note: `x` is assumed to solve x = valuation(net, x, a) if provided.
+Note: `x` is assumed to solve x = valuation(net, x, a) and should be an
+      abstract vector, i.e. not be finalized!
 """
-function fixjacobian(net::FinancialModel, a)
-    fixjacobian(net, a, fixvalue(net, a))
-end
-
-function fixjacobian(net::FinancialModel, a, x::AbstractVector)
+function fixjacobian(net::FinancialModel, x::AbstractVector, a)
     dVdx = ForwardDiff.jacobian(x -> valuation(net, x, a), x)
     dVda = ForwardDiff.jacobian(a -> valuation(net, x, a), a)
     (I - dVdx) \ dVda
@@ -134,24 +171,6 @@ financial network `net` in state `x`.
 """
 function solvent end
 
-"""
-    equity(net, x)
-
-Returns a vector of equity values of each firm in the financial
-network `net` in state `x`.
-
-Note: Can also be defined to extract equity part from Jacobian matrix
-      (as of fixjacobian).
-"""
-function equity end
-
-"""
-    debt(net, x)
-
-Returns a vector of debt values of each firm in the financial
-network `net` in state `x`.
-
-Note: Can also be defined to extract equity part from Jacobian matrix
-      (as of fixjacobian).
-"""
-function debt end
+function solvent(net::DefaultModel, x::ModelState)
+    x.debt .>= nominaldebt(net)
+end
