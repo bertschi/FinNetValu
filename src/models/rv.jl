@@ -51,7 +51,7 @@ init(sol::PicardIteration, net::RVOrigModel, e) = nominaldebt(net)
 
 init(sol::NLSolver, net::RVOrigModel, e) = nominaldebt(net)
 
-function solvent(net::RVOrigModel, l)
+function solvent(net::RVOrigModel, l::AbstractVector)
     l .>= nominaldebt(net)
 end
 
