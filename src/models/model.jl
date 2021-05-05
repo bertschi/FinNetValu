@@ -19,12 +19,12 @@ Updates the state `y` of a financial `net` based on the current state
 `x` and external asset values `a`.
 
 Note: For convenience, e.g. when using autodiff or computing averages
-      etc., you should consider representing states as (abstract)
-      vectors.
+      etc., you should consider representing states and asset value as
+      (abstract) vectors [all methods defined here adhere to this].
 """
 function valuation! end
 
-function valuation!(y, net::FinancialModel, x, a)
+function valuation!(y::AbstractVector, net::FinancialModel, x::AbstractVector, a::AbstractVector)
     y .= valuation(net, x, a)
 end
 
@@ -45,24 +45,27 @@ function init end
 """
 Structure to hold equity and debt value of model
 """
-struct ModelState{U}
+struct DefaultModelState{U}
     equity::U
     debt::U
 
-    function ModelState(equity::U, debt::U) where {U <: AbstractVector}
+    function DefaultModelState(equity::U, debt::U) where {U <: AbstractVector}
         new{U}(equity, debt)
     end
 end
 
-"""
-    finalizestate(net, x, a)
+## Useful for testing ...
+Base.isapprox(x::DefaultModelState, y::DefaultModelState; kwargs...) =
+    isapprox(x.equity, y.equity; kwargs...) && isapprox(x.debt, y.debt; kwargs...)
 
-Constructs equity-debt struct [of type ModelState] from state `x` with
+
+"""
+    debtequity(net, x, a)
+
+Constructs equity-debt struct [of type DefaultModelState] from state `x` with
 external asset values `a`.
-
-Called from fixvalue if not prevented.
 """
-function finalizestate end
+function debtequity end
 
 """
     valuefunc(net, a)
@@ -70,7 +73,7 @@ function finalizestate end
 Small wrapper to generate function f!(y, x) suitable for fixed point
 solvers. Fixed point `x` should fulfill x = valuation(net, x, a).
 """
-function valuefunc(net::FinancialModel, a)
+function valuefunc(net::FinancialModel, a::AbstractVector)
     function f!(y, x)
         valuation!(y, net, x, a)
         y
@@ -101,20 +104,11 @@ struct NLSolver <: FixSolver
     end
 end
 
-function maybefinalize(flag, net, x, a)
-    if flag
-        finalizestate(net, x, a)
-    else
-        x
-    end
-end
-
-function fixvalue(sol::NLSolver, net::FinancialModel, a;
-                  finalize = true)
+function fixvalue(sol::NLSolver, net::FinancialModel, a::AbstractVector)
     sol = fixedpoint(valuefunc(net, a),
                      init(sol, net, a);
                      sol.opts...)
-    maybefinalize(finalize, net, sol.zero, a)
+    sol.zero
 end
 
 struct PicardIteration{T <: Real} <: FixSolver
@@ -122,15 +116,14 @@ struct PicardIteration{T <: Real} <: FixSolver
     rtol::T
 end
 
-function fixvalue(sol::PicardIteration, net::FinancialModel, a;
-                  finalize = true)
+function fixvalue(sol::PicardIteration, net::FinancialModel, a::AbstractVector)
     x = init(sol, net, a)
     y = valuation(net, x, a)
     while !isapprox(x, y;
                     atol = sol.atol, rtol = sol.rtol)
         x, y = y, valuation(net, y, a)
     end
-    maybefinalize(finalize, net, y, a)
+    y
 end
 
 """
@@ -140,9 +133,9 @@ Compute the Jacobian matrix of `fixvalue(net, a)` using the implicit
 function theorem and autodiff (currently via ForwardDiff).
 
 Note: `x` is assumed to solve x = valuation(net, x, a) and should be an
-      abstract vector, i.e. not be finalized!
+      abstract vector.
 """
-function fixjacobian(net::FinancialModel, x::AbstractVector, a)
+function fixjacobian(net::FinancialModel, x::AbstractVector, a::AbstractVector)
     dVdx = ForwardDiff.jacobian(x -> valuation(net, x, a), x)
     dVda = ForwardDiff.jacobian(a -> valuation(net, x, a), a)
     (I - dVdx) \ dVda
@@ -171,6 +164,6 @@ financial network `net` in state `x`.
 """
 function solvent end
 
-function solvent(net::DefaultModel, x::ModelState)
+function solvent(net::DefaultModel, x::DefaultModelState)
     x.debt .>= nominaldebt(net)
 end

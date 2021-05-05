@@ -11,8 +11,7 @@ include("models/rv.jl")
 
 # Generic financial model interface
 export fixvalue, fixjacobian, valuation!, valuation
-export numfirms, nominaldebt, solvent
-export ModelState, finalizestate
+export numfirms, nominaldebt, solvent, debtequity
 # Model constructors
 export
     XOSModel,

@@ -55,19 +55,19 @@ equityview(net::XOSModel, x::AbstractMatrix) = view(x, 1:numfirms(net), :)
 debtview(net::XOSModel, x::AbstractVector) = begin N = numfirms(net); view(x, (N+1):(2*N)) end
 debtview(net::XOSModel, x::AbstractMatrix) = begin N = numfirms(net); view(x, (N+1):(2*N), :) end
 
-function valuation!(y, net::XOSModel, x, a)
+function valuation!(y::AbstractVector, net::XOSModel, x::AbstractVector, a::AbstractVector)
     tmp = net.Mᵉ * a .+ net.Mˢ * equityview(net, x) .+ net.Mᵈ * debtview(net, x)
     equityview(net, y) .= max.(zero(eltype(x)), tmp .- net.d)
     debtview(net, y)   .= min.(net.d, tmp)
 end
 
-function valuation(net::XOSModel, x, a)
+function valuation(net::XOSModel, x::AbstractVector, a::AbstractVector)
     tmp = net.Mᵉ * a .+ net.Mˢ * equityview(net, x) .+ net.Mᵈ * debtview(net, x)
     vcat(max.(zero(eltype(x)), tmp .- net.d),
          min.(net.d, tmp))
 end
 
-function fixjacobian(net::XOSModel, x::AbstractVector, a)
+function fixjacobian(net::XOSModel, x::AbstractVector, a::AbstractVector)
     ## Uses analytical formulas for speedup
     ξ = solvent(net, x)
     eins = one(eltype(ξ))
@@ -81,14 +81,14 @@ function solvent(net::XOSModel, x::AbstractVector)
     equityview(net, x) .> zero(eltype(x))
 end
 
-function init(sol::NLSolver, net::XOSModel, a)
+function init(sol::NLSolver, net::XOSModel, a::AbstractVector)
     vcat(max.(a .- net.d, 0), net.d)
 end
 
-function init(sol::PicardIteration, net::XOSModel, a)
+function init(sol::PicardIteration, net::XOSModel, a::AbstractVector)
     vcat(max.(a .- net.d, 0), net.d)
 end
 
-function finalizestate(net::XOSModel, x::AbstractVector, a)
-    ModelState(equityview(net, x), debtview(net, x))
+function debtequity(net::XOSModel, x::AbstractVector, a::AbstractVector)
+    DefaultModelState(equityview(net, x), debtview(net, x))
 end

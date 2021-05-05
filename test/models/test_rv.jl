@@ -1,7 +1,7 @@
 using Distributions
 
-# Base.isapprox(x::FinNetValu.ModelState, y::FinNetValu.ModelState) =
-#     x.equity ≈ y.equity && x.debt ≈ y.debt
+fixdebtequity(solver, net, a) =
+    FinNetValu.debtequity(net, FinNetValu.fixvalue(solver, net, a), a)
 
 @testset "rv" begin
     ## Asymmetric example from paper
@@ -20,9 +20,9 @@ using Distributions
         netRVOrig = FinNetValu.RVOrigModel(L, α, β)
 
         x = rand(Uniform(0, 1)) .* e
-        rv = FinNetValu.fixvalue(FinNetValu.PicardIteration(1e-12, 1e-12), netRV, x)
-        rvo = FinNetValu.fixvalue(FinNetValu.PicardIteration(1e-12, 1e-12), netRVOrig, x)
-        rvp = FinNetValu.fixvalue(FinNetValu.GCVASolver(), netRVOrig, x)
+        rv = fixdebtequity(FinNetValu.PicardIteration(1e-12, 1e-12), netRV, x)
+        rvo = fixdebtequity(FinNetValu.PicardIteration(1e-12, 1e-12), netRVOrig, x)
+        rvp = fixdebtequity(FinNetValu.GCVASolver(), netRVOrig, x)
         @test rv ≈ rvo
         @test rv ≈ rvp
     end

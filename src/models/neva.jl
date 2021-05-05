@@ -68,34 +68,34 @@ numfirms(net::NEVAModel) = net.N
 
 nominaldebt(net::NEVAModel) = net.l
 
-function valuation!(y, net::NEVAModel, x, a)
+function valuation!(y::AbstractVector, net::NEVAModel, x::AbstractVector, a::AbstractVector)
     y .= a .* net.𝕍ᵉ(net, x, a) .+ rowsums(net.A .* net.𝕍(net, x, a)) .- net.l
 end
 
-function valuation(net::NEVAModel, x, a)
+function valuation(net::NEVAModel, x::AbstractVector, a::AbstractVector)
     a .* net.𝕍ᵉ(net, x, a) .+ rowsums(net.A .* net.𝕍(net, x, a)) .- net.l
 end
 
-function solvent(net::NEVAModel, x)
+function solvent(net::NEVAModel, x::AbstractVector)
     x .>= zero(eltype(x))
 end
 
-function init(sol::NLSolver, net::NEVAModel, a)
+function init(sol::NLSolver, net::NEVAModel, a::AbstractVector)
     net.E₀(net, a)
 end
 
-function init(sol::PicardIteration, net::NEVAModel, a)
+function init(sol::PicardIteration, net::NEVAModel, a::AbstractVector)
     net.E₀(net, a)
 end
 
-bookequity(net::NEVAModel, a) = a .+ rowsums(net.A) .- net.l
+bookequity(net::NEVAModel, a::AbstractVector) = a .+ rowsums(net.A) .- net.l
 
-function finalizestate(net::NEVAModel, e, a)
+function debtequity(net::NEVAModel, e::AbstractVector, a::AbstractVector)
     ξ = solvent(net, e)
     p̄ = nominaldebt(net)
     equity = ξ .* e
     debt = ξ .* p̄ .+ (1 .- ξ) .* net.dbneg.(e, a, p̄)
-    ModelState(equity, debt)
+    DefaultModelState(equity, debt)
 end
 
 ##########################################
@@ -254,7 +254,7 @@ of default and endogenous recovery respectively.
 
 This valuation can be considered as a ex-ante version of the Eisenberg & Noe model.
 """
-function ExAnteEN_BS_Model(Lᵉ::AbstractVector, L::AbstractMatrix, β, θ::BlackScholesParams)
+function ExAnteEN_BS_Model(Lᵉ::AbstractVector, L::AbstractMatrix, β::Real, θ::BlackScholesParams)
     pbar = vec(sum(L; dims = 2))
     function val(net, e, a)
         K = a .- e

@@ -34,7 +34,7 @@ numfirms(net::RVOrigModel) = length(net.l)
 
 nominaldebt(net::RVOrigModel) = net.l
 
-function valuation(net::RVOrigModel, l, e)
+function valuation(net::RVOrigModel, l::AbstractVector, e::AbstractVector)
     N = numfirms(net)
     function val(i)
         tmp = sum(l[j] * net.Π[j, i] for j ∈ 1:N)
@@ -47,18 +47,18 @@ function valuation(net::RVOrigModel, l, e)
     [val(i) for i ∈ 1:N]
 end
 
-init(sol::PicardIteration, net::RVOrigModel, e) = nominaldebt(net)
+init(sol::PicardIteration, net::RVOrigModel, e::AbstractVector) = nominaldebt(net)
 
-init(sol::NLSolver, net::RVOrigModel, e) = nominaldebt(net)
+init(sol::NLSolver, net::RVOrigModel, e::AbstractVector) = nominaldebt(net)
 
 function solvent(net::RVOrigModel, l::AbstractVector)
     l .>= nominaldebt(net)
 end
 
-function finalizestate(net::RVOrigModel, l, e)
+function debtequity(net::RVOrigModel, l::AbstractVector, e::AbstractVector)
     ξ = solvent(net, l)
     equity = ξ .* (e .+ net.Π' * l .- l)
-    ModelState(equity, l)
+    DefaultModelState(equity, l)
 end
 
 #################################################
@@ -67,9 +67,9 @@ end
 
 struct GCVASolver <: FixSolver end
 
-init(sol::GCVASolver, net::RVOrigModel, e) = nominaldebt(net)
+init(sol::GCVASolver, net::RVOrigModel, e::AbstractVector) = nominaldebt(net)
 
-function fixvalue(sol::GCVASolver, net::RVOrigModel, e; finalize = true)
+function fixvalue(sol::GCVASolver, net::RVOrigModel, e::AbstractVector)
     N = numfirms(net)
     l̄ = nominaldebt(net)
     Λ = copy(init(sol, net, e))
@@ -78,7 +78,8 @@ function fixvalue(sol::GCVASolver, net::RVOrigModel, e; finalize = true)
         v = e .+ net.Π' * Λ .- l̄
         i = v .< 0.0
         if i == i₀
-            return maybefinalize(finalize, net, Λ, e)
+            ## Done and break loop
+            return Λ
         end
         s = .!(i)
         Λ[s] .= l̄[s]

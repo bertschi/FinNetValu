@@ -1,9 +1,6 @@
 using LinearAlgebra
 using Distributions
 
-Base.isapprox(x::FinNetValu.ModelState, y::FinNetValu.ModelState) =
-    x.equity ≈ y.equity && x.debt ≈ y.debt
-
 @testset "neva" begin
     L = [0. 1 2;
          1 0 1;
@@ -20,7 +17,7 @@ Base.isapprox(x::FinNetValu.ModelState, y::FinNetValu.ModelState) =
         netEN = FinNetValu.EisenbergNoeModel(Lᵉ, L)
         netRV11 = FinNetValu.RogersVeraartModel(Lᵉ, L, 1.0, 1.0)
         a = rand(Uniform(-0.1, 0.1), N) .+ Lᵉ
-        x = [FinNetValu.fixvalue(solver, net, a)
+        x = [FinNetValu.debtequity(net, FinNetValu.fixvalue(solver, net, a), a)
              for solver ∈ [FinNetValu.PicardIteration(1e-12, 1e-12),
                             FinNetValu.NLSolver(m = 0, xtol = 1e-12)],
                  net ∈ [netXOS, netEN, netRV11] ]
