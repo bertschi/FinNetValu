@@ -20,7 +20,9 @@ Here we replicate some figures from the paper
 
 Paolo Barucca, Marco Bardoscia, Fabio Caccioli, Marco D’Errico, Gabriele Visentin, Stefano Battiston and Guido Caldarelli, *Network Valuation in Financial Systems*, arXiv:1606.05164v2, 2016.
 
-To reproduce figure 1, we use the simplest possible setup. I.e. we define the corresponding models with a single firm and run their valuations functions across a range of equities.
+To reproduce figure 1, we use the simplest possible setup. I.e. we
+define the corresponding models with a single firm and run their
+valuations functions across a range of equities.
 
 ```julia
 EN = EisenbergNoeModel([0.0], 2 .* ones(1,1))
@@ -43,7 +45,12 @@ plot!(plt, equities, 𝕍_LinearDR, label = "Linear DR")
 plot!(plt, equities, 𝕍_ExAnteEN, label = "Ex-ante EN")
 ```
 
-Note that the valuation formula $\mathbb{V}_{ij} = \frac{E_j^+}{M_j}$ for the linear debt rank model is actually not correct in the paper as it can exceed one. In practice, this should not be a problem as a firms equity value $E_j$ never exceeds its book equity $M_j$. Here, values are clipped between 0 and 1 as in the accompanying code at https://github.com/marcobardoscia/neva
+Note that the valuation formula $\mathbb{V}_{ij} = \frac{E_j^+}{M_j}$
+for the linear debt rank model is actually not correct in the paper as
+it can exceed one. In practice, this should not be a problem as a
+firms equity value $E_j$ never exceeds its book equity $M_j$. Here,
+values are clipped between 0 and 1 as in the accompanying code at
+https://github.com/marcobardoscia/neva
 
 Next, we replicate the left panel of figure 2.
 
@@ -63,17 +70,20 @@ models = [EisenbergNoeModel(Lᵉ, A'),
           ExAnteEN_BS_Model(Lᵉ, A', 1.0, BlackScholesParams(0.0, 1.0, 0.1))]
 ```
 
-Each model is then shocked by decreasing the external asset value by a factor $\alpha$ and compute the impact on the equity value as in the paper, i.e.
+Each model is then shocked by decreasing the external asset value by a
+factor $\alpha$ and compute the impact on the equity value as in the
+paper, i.e.        
 $$
     \frac{\sum_i {\Delta}E_i - {\Delta}A^e_i}{\sum_{ij} A_{ij}}
 $$
 where ${\Delta}A^e = \alpha A^e$.
 
 ```julia
+const solver = PicardIteration(1e-12, 1e-12)
 function runshock(model, Aᵉ, α)
-    E₀ = fixvalue(model, Aᵉ)
+    E₀ = fixvalue(solver, model, Aᵉ)
     ΔAᵉ = α .* Aᵉ
-    ΔE  = E₀ .- fixvalue(model, Aᵉ .- ΔAᵉ)
+    ΔE  = E₀ .- fixvalue(solver, model, Aᵉ .- ΔAᵉ)
     sum(ΔE .- ΔAᵉ) / sum(model.A)
 end
 ```
@@ -90,12 +100,22 @@ plot(αs, shocks, label = ["EN", "Furfine", "Linear DR", "NEVA"],
      xlabel = "shock", ylabel = "network contribution (relative to max)")
 ```
 
-The linear debt rank model with externally fixed book equity looks right, but the ex-ante version of the model appears shifted. In order to investigate this issue in more detail, we reproduce some other figures using that model.
+The linear debt rank model with externally fixed book equity looks
+right, but the ex-ante version of the model appears shifted. In order
+to investigate this issue in more detail, we reproduce some other
+figures using that model.
 
-We start with the right panel of figure 2 which compares the valuation adjustment for the book equity with the corresponding one taking into account network effects:
+We start with the right panel of figure 2 which compares the valuation
+adjustment for the book equity with the corresponding one taking into
+account network effects:
 
 ```julia
 modelNEVA = FinNetValu.ExAnteEN_BS_Model(Lᵉ, A', 1.0, BlackScholesParams(0.0, 1.0, 0.1))
+
+function bookequity(net::NEVAModel, a::AbstractVector)
+    l̄ = nominaldebt(net)
+    a .+ net.A * l̄ .- l̄
+end 
 
 αs = range(0, length = 101, stop = 0.6)
 df = DataFrame(α = Vector{Float64}(),
@@ -105,7 +125,7 @@ df = DataFrame(α = Vector{Float64}(),
 for α in αs
     a = (1 - α) .* Aᵉ
     m = bookequity(modelNEVA, a)
-    e = fixvalue(modelNEVA, a)
+    e = fixvalue(solver, modelNEVA, a)
     val = modelNEVA.𝕍(modelNEVA, m, a) .- modelNEVA.𝕍(modelNEVA, e, a)
     push!(df, vcat(α, val'))
 end
@@ -129,7 +149,7 @@ Finally, we replicate all figures from the appendix.
 function fig_limit(Aᵉ, A)
     Lᵉ = fill(0.0, 3)
     modelEN = FinNetValu.EisenbergNoeModel(Lᵉ, A')
-    println(fixvalue(modelEN, Aᵉ))
+    println(fixvalue(solver, modelEN, Aᵉ))
 
     τs = 10 .^ (-2:0.05:2)
     df = DataFrame(τ = Vector{Float64}(),
@@ -141,7 +161,7 @@ function fig_limit(Aᵉ, A)
         modelExAnteEN = FinNetValu.ExAnteEN_BS_Model(Lᵉ, A',
                                                      1.0,
                                                      BlackScholesParams(0.0, τ, 1.0))
-        e = fixvalue(modelExAnteEN, Aᵉ)
+        e = fixvalue(solver, modelExAnteEN, Aᵉ)
         push!(df, vcat(τ, e))
     end
     df
@@ -190,4 +210,6 @@ plot(log10.(df_fig5.τ), df_fig5.bankB)
 plot(log10.(df_fig5.τ), df_fig5.bankC)
 ```
 
-All figures appear qualitatively correct, but the scale on the maturity axis is larger! Maybe a different ``\\sigma`` might work as this is not given in the paper.
+All figures appear qualitatively correct, but the scale on the
+maturity axis is larger! Maybe a different $\sigma$1 might work as
+this is not given in the paper.
