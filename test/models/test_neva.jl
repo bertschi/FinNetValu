@@ -16,7 +16,7 @@ using Distributions
         netXOS = FinNetValu.XOSModel(zeros(N, N), Mᵈ, I, d)
         netEN = FinNetValu.EisenbergNoeModel(Lᵉ, L)
         netRV11 = FinNetValu.RogersVeraartModel(Lᵉ, L, 1.0, 1.0)
-        a = rand(Uniform(-0.1, 0.1), N) .+ Lᵉ
+        a = rand(rng, Uniform(-0.1, 0.1), N) .+ Lᵉ
         x = [FinNetValu.debtequity(net, FinNetValu.fixvalue(solver, net, a), a)
              for solver ∈ [FinNetValu.PicardIteration(1e-12, 1e-12),
                             FinNetValu.NLSolver(m = 0, xtol = 1e-12)],
@@ -32,7 +32,7 @@ using Distributions
         netRV00 = FinNetValu.RogersVeraartModel(Lᵉ, L, 0.0, 0.0)
         for i ∈ 1:10
             solver = (i > 5) ? FinNetValu.PicardIteration(1e-12, 1e-12) : FinNetValu.NLSolver(m = 0, xtol = 1e-12)
-            a = rand(Uniform(-0.1, 0.1), N) .+ Lᵉ
+            a = rand(rng, Uniform(-0.1, 0.1), N) .+ Lᵉ
             @test FinNetValu.fixvalue(solver, netF, a) ≈ FinNetValu.fixvalue(solver, netRV00, a)
         end
     end

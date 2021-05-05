@@ -19,7 +19,8 @@ struct RVOrigModel{T,U} <: DefaultModel
     function RVOrigModel(L::AbstractMatrix,α::Real,β::Real)
         U = eltype(L)
         l = rowsums(L)
-        Π = L ./ l
+        div0(x, y) = if y == 0 y else x / y end
+        Π = div0.(L, l)
         new{typeof(L),U}(L, l, Π, convert(U, α), convert(U, β))
     end
 end
@@ -90,23 +91,33 @@ function fixvalue(sol::GCVASolver, net::RVOrigModel, e::AbstractVector)
 end
     
 """
-    RVEqModel(Mˢ, Mᵈ, d)
+    RVEqModel(Mˢ, Mᵈ, Mᵉ, d, α, βˢ, βᵈ)
 
 Rogers & Veraart model extended for cross-holdings of equity `Mˢ` and
 parameterized in terms of debt cross-holding fractions `Mᵈ` and total
-nominal debt `d` (a la XOSModel).
+nominal debt `d` (a la XOSModel).  
+
+As in the XOS model the portfolio matrix `Mᵉ` mixes external assets
+and the RV parameters are slightly generalized to allow different
+recoveries on assets (`α`), equities (`βˢ`) and debt (`βᵈ`)
+respectively.
 """
-struct RVEqModel{T1,T2,U} <: DefaultModel
+struct RVEqModel{T1,T2,T3,U,T} <: DefaultModel
     N::Int64
     Mˢ::T1
     Mᵈ::T2
+    Mᵉ::T3
     d::U
+    α::T
+    βˢ::T
+    βᵈ::T
 
-    function RVEqModel(Mˢ::AbstractMatrix, Mᵈ::AbstractMatrix, d::AbstractVector)
+    function RVEqModel(Mˢ::AbstractMatrix, Mᵈ::AbstractMatrix, Mᵉ, d::AbstractVector, α::Real, βˢ::Real, βᵈ::Real)
         @assert isleft_substochastic(Mˢ)
         @assert isleft_substochastic(Mᵈ)
         @assert all(d .>= 0)
-        new{typeof(Mˢ),typeof(Mᵈ),typeof(d)}(length(d), Mˢ, Mᵈ, d)
+        α, βˢ, βᵈ = promote(α, βˢ, βᵈ)
+        new{typeof(Mˢ),typeof(Mᵈ),typeof(Mᵉ),typeof(d), typeof(α)}(length(d), Mˢ, Mᵈ, Mᵉ, d, α, βˢ, βᵈ)
     end
 end
 
@@ -133,3 +144,31 @@ numfirms(net::RVEqModel) = net.N
 
 nominaldebt(net::RVEqModel) = net.d
 
+equityview(net::RVEqModel, x::AbstractVector) = view(x, 1:numfirms(net))
+## equityview(net::RVEqModel, x::AbstractMatrix) = view(x, 1:numfirms(net), :)
+
+debtview(net::RVEqModel, x::AbstractVector) = begin N = numfirms(net); view(x, (N+1):(2*N)) end
+## debtview(net::RVEqModel, x::AbstractMatrix) = begin N = numfirms(net); view(x, (N+1):(2*N), :) end
+
+function valuation(net::RVEqModel, x::AbstractVector, a::AbstractVector)
+    N = numfirms(net)
+    v = net.Mᵉ * a .+ net.Mˢ * equityview(net, x) .+ net.Mᵈ * debtview(net, x)
+    vαβ = net.α .* net.Mᵉ * a .+ net.βˢ .* net.Mˢ * equityview(net, x) .+ net.βᵈ .* net.Mᵈ * debtview(net, x)
+    equity = max.(zero(eltype(v)), v .- net.d)
+    debt = ifelse.(v .< net.d, vαβ, net.d)
+    vcat(equity, debt)
+end
+
+solvent(net::RVEqModel, x::AbstractVector) = debtview(net, x) .>= nominaldebt(net)
+
+init(sol::NLSolver, net::RVEqModel, a::AbstractVector) =
+    ## Note: We need to take equity cross-holdings into account and
+    ## therefore initialize at α = β = 1, i.e. via the XOSModel
+    fixvalue(sol, XOSModel(net.Mˢ, net.Mᵈ, net.Mᵉ, net.d), a)
+
+init(sol::PicardIteration, net::RVEqModel, a::AbstractVector) =
+    fixvalue(sol, XOSModel(net.Mˢ, net.Mᵈ, net.Mᵉ, net.d), a)
+
+function debtequity(net::RVEqModel, x::AbstractVector, a::AbstractVector)
+    DefaultModelState(equityview(net, x), debtview(net, x))
+end
