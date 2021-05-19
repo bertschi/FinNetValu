@@ -1,0 +1,6 @@
+Fixes:
+    - Are we actually using fixvalue(net::FinancialModel, a; m = 0, kwargs...) ?
+    - XOS tests are too slow
+
+Features:
+    - Default costs for XOS (fixed point algorithm)

@@ -22,7 +22,20 @@ struct XOSModel{T1,T2,T3,U} <: FinancialModel
         @assert isleft_substochastic(Mˢ)
         @assert isleft_substochastic(Mᵈ)
         @assert all(d .>= 0)
-        new{T1,T2,T3,typeof(d)}(length(d), Mˢ, Mᵈ, Mᵉ, d)
+        ld = length(collect(d))
+        if typeof(Mˢ) <: Array
+            @assert ld == size(Mˢ,1)
+            @assert ld == size(Mˢ,2)
+        end
+        if typeof(Mᵈ) <: Array
+            @assert ld == size(Mᵈ,1)
+            @assert ld == size(Mᵈ,2)
+        end
+        if typeof(Mᵉ) <: Array
+            @assert ld == size(Mᵉ,1)
+            @assert ld == size(Mᵉ,2)
+        end
+        new{T1,T2,T3,typeof(d)}(ld, Mˢ, Mᵈ, Mᵉ, d)
     end
 end
 
