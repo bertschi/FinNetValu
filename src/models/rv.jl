@@ -19,7 +19,7 @@ struct RVOrigModel{T,U} <: DefaultModel
     function RVOrigModel(L::AbstractMatrix,α::Real,β::Real)
         U = eltype(L)
         l = rowsums(L)
-        div0(x, y) = if y == 0 y else x / y end
+        div0(x, y) = if y == zero(y) y else x / y end
         Π = div0.(L, l)
         new{typeof(L),U}(L, l, Π, convert(U, α), convert(U, β))
     end
@@ -77,7 +77,7 @@ function fixvalue(sol::GCVASolver, net::RVOrigModel, e::AbstractVector)
     i₀ = fill(false, N)
     while true
         v = e .+ net.Π' * Λ .- l̄
-        i = v .< 0.0
+        i = v .< zero(eltype(v))
         if i == i₀
             ## Done and break loop
             return Λ

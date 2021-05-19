@@ -12,8 +12,9 @@ include("models/rv.jl")
 # Generic financial model interface
 export fixvalue, fixjacobian, valuation!, valuation
 export numfirms, nominaldebt, solvent, debtequity
-# Model constructors
+# Model types and constructors
 export
+    FinancialModel, DefaultModel,
     XOSModel,
     NEVAModel, EisenbergNoeModel, RogersVeraartModel, FurfineModel, LinearDebtRankModel, ExAnteEN_BS_Model,
     RVOrigModel, RVEqModel

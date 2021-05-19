@@ -101,3 +101,26 @@ df = @eachrow df begin
 end
 
 df |> CSV.write("/tmp/baz.csv")
+
+## Combines shock (bank 1 has lower a0) and BS random assets (a0 =
+## 1.5, σ = 0.25) for all other banks
+
+df = crossjoin(DataFrame(equity = [0, 0.25]),
+               DataFrame(eqtype = [symringnet, fullnet]),
+               DataFrame(debt = [0, 1/3, 1]),
+               DataFrame(dbtype = [symringnet, fullnet]),
+               DataFrame(alpha_beta = [0, 1/2, 0.9, 1]),
+               DataFrame(r = 0.0, tau = 1.0, sigma = 0.25,
+                         a0 = 1.5, N = 20))
+df = @eachrow df begin
+    @newcol loss::Vector{Vector{Float64}}
+    @newcol default::Vector{Vector{Float64}}
+    data = @time demo(make_net(:eqtype(:N, :equity), :dbtype(:N, :debt), ones(:N), :alpha_beta, :alpha_beta),
+                      vcat(1, fill(:a0, N-1)),
+                      BlackScholesParams(:r, :tau, :sigma))
+    :loss = map(x -> x.loss, data)
+    :default = map(x -> x.default, data)
+end
+df = flatten(df, [:loss, :default])
+
+df |> CSV.write("/tmp/foo.csv")
